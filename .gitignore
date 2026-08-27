@@ -1,0 +1,9 @@
+node_modules
+dist
+*.local
+.DS_Store
+.omc/state
+.omc/sessions
+.omc/logs
+.omc/artifacts
+.omc/handoffs

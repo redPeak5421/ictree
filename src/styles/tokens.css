@@ -1,0 +1,13 @@
+:root {
+  --bg: #f6f1e7;
+  --panel: #fffaf3;
+  --ink: #3d342c;
+  --muted: #8a7f74;
+  --line: #e6dfd4;
+  --share: #c4783a;
+  --share-ink: #fffaf3;
+  --selected: #efe8dc;
+  --radius-input: 14px;
+  --radius-pill: 999px;
+  --font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
