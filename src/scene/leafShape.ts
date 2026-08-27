@@ -8,14 +8,10 @@
 export const LEAF_HALF_X = 0.43
 export const LEAF_HALF_Y = 0.47
 
-/** Same, for the grass tuft that `tuftTexture` draws. */
-export const TUFT_HALF_X = 0.45
-export const TUFT_HALF_Y = 0.47
+export type Silhouette = 'leaf'
 
-export type Silhouette = 'leaf' | 'tuft'
-
-export function halfExtents(kind: Silhouette): [number, number] {
-  return kind === 'tuft' ? [TUFT_HALF_X, TUFT_HALF_Y] : [LEAF_HALF_X, LEAF_HALF_Y]
+export function halfExtents(_kind: Silhouette): [number, number] {
+  return [LEAF_HALF_X, LEAF_HALF_Y]
 }
 
 /**

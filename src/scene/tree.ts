@@ -2,7 +2,7 @@ import { moduleInkLuma } from '../qr/contrast'
 import { ISLAND_RIM, type ModuleCell, type ModuleGrid } from '../qr/types'
 import { colonize, type ColonizeNode, type Point } from './colonize'
 import { hashString, mulberry32 } from './hash'
-import { fitScale, qrSlots, type Bounds, type Silhouette } from './leafShape'
+import { fitScale, qrSlots, type Bounds } from './leafShape'
 
 export interface BranchInstance {
   position: [number, number, number]
@@ -19,18 +19,17 @@ export type Euler3 = [number, number, number]
 export type LeafShape = 'ovate' | 'maple'
 
 export interface LeafInstance {
-  /** Canopy leaf, or a grass tuft standing on one of the code's corners. */
-  kind: Silhouette
+  /** Canopy leaf, or a grass blade standing on one of the code's corners. */
+  kind: 'leaf' | 'blade'
   shape: LeafShape
   position: [number, number, number]
   /**
-   * A leaf's orientation is absolute: it is part of the object and its
-   * top-down outline is what the code is made of. A tuft is a billboard: the
-   * renderer adds the camera's heading to [1] so it never goes edge-on.
+   * Absolute: every leaf and blade is part of the object, and a leaf's
+   * top-down outline is what the code is made of. Nothing faces the camera.
    */
   euler: Euler3
   scale: number
-  /** Twig tip this leaf grows from; for a tuft, its spot on the lawn. */
+  /** Twig tip this leaf grows from; for a blade, where it meets the turf. */
   anchor: [number, number, number]
   /** Centre of the module this instance stands over, in world x/z. */
   cell: [number, number]
@@ -49,7 +48,7 @@ export interface LawnInstance {
 export interface TreeRig {
   branches: BranchInstance[]
   leaves: LeafInstance[]
-  /** Turf blocks that are the code's four corners. */
+  /** Turf mounds that are the code's four corners. */
   lawns: LawnInstance[]
   /** Highest point of the crown, so the camera can frame all of it. */
   crownTop: number
@@ -95,12 +94,22 @@ export const VIEW_YAW = Math.PI / 4
 export const VIEW_PITCH = 0.38
 
 /**
- * Height of the raised stone block under every dark module. From an oblique
- * view its side faces show the code as a relief on the island, like the
- * reference; from above its top matches the paving. In the corners the blocks
- * are turf instead, and their tops are the finder patterns' ink.
+ * The corner grass: a low turf mound on every dark corner module, whose top
+ * is the finder patterns' ink from above, with a clump of blades standing in
+ * it. The paving carries no trace of the code — from the side there is a
+ * tree and four patches of grass, and only straight down is there a code.
  */
-export const BLOCK_H = 0.3
+export const MOUND_R = 0.56
+export const MOUND_H = 0.24
+/**
+ * Tallest blade, the most it may lean and how far from centre it may root:
+ * together they keep a leaning blade — its width included — over its own
+ * module. The finder rings are made of these modules, and even slivers of
+ * blade in the light ring between them break a decoder's 1:1:3:1:1 scan.
+ */
+export const BLADE_H = 0.9
+export const BLADE_LEAN = 0.28
+export const BLADE_ROOT = 0.14
 
 /** Thickness of the island slab under the paving. */
 export const SLAB_H = 1.05
@@ -141,8 +150,8 @@ export function isCornerModule(x: number, y: number, size: number): boolean {
  * leaves grow: every dark module outside the corners owns a column of leaves
  * stacked through the crown, each sized so its silhouette cannot cross into a
  * light module, and no light module has a leaf over it. The corners are turf
- * blocks with a few tufts on them. The trunk and twigs are pale, so where they
- * show through a light module from above they still read as light.
+ * mounds with grass standing in them. The trunk and twigs are pale, so where
+ * they show through a light module from above they still read as light.
  *
  * Crown: a broad lobed dome about half as tall as it is wide, as in the
  * reference, on a short trunk. Each column takes attraction points down the
@@ -446,27 +455,41 @@ export function buildTree(grid: ModuleGrid, seed: number): TreeRig {
     }
   }
 
-  // ---- corners: turf blocks, with tufts standing on them ----
+  // ---- corners: turf mounds, with a clump of blades standing in each ----
   const lawns: LawnInstance[] = []
   for (const cell of lawnCells) {
     const cx = cell.x - half
     const cz = cell.y - half
     const ink = moduleInkLuma(cell)
     lawns.push({ cell: [cx, cz], ink, tone: Math.floor(rng() * 4) })
-    const tufts = 2 + Math.floor(rng() * 2)
-    for (let k = 0; k < tufts; k++) {
-      // Small enough, and close enough to centre, that a standing tuft's
-      // top-down line never leaves its own module.
-      const s = 0.55 + rng() * 0.4
-      const tx = cx + (rng() - 0.5) * 0.1
-      const tz = cz + (rng() - 0.5) * 0.1
+    const blades = 22 + Math.floor(rng() * 7)
+    for (let k = 0; k < blades; k++) {
+      // Each blade has its own heading and leans a little away from the
+      // clump's centre, so the clump is a real bush from every side. Short
+      // enough, and rooted close enough to centre, that a leaning tip stays
+      // over its own module from above.
+      const h = BLADE_H * (0.4 + rng() * 0.6)
+      const r = Math.sqrt(rng()) * BLADE_ROOT
+      const a = rng() * Math.PI * 2
+      const bx = cx + Math.cos(a) * r
+      const bz = cz + Math.sin(a) * r
+      const lean = BLADE_LEAN * (0.3 + rng() * 0.7)
+      // Lean is about the blade's own x axis after its heading is applied,
+      // so the heading sets which way it leans: outward, plus scatter.
+      const heading = a + Math.PI / 2 + (rng() - 0.5) * 0.8
+      const up: [number, number, number] = [
+        Math.sin(lean) * Math.sin(heading),
+        Math.cos(lean),
+        Math.sin(lean) * Math.cos(heading),
+      ]
+      const baseY = MOUND_H * 0.55
       leaves.push({
-        kind: 'tuft',
+        kind: 'blade',
         shape: 'ovate',
-        position: [tx, BLOCK_H + s / 2, tz],
-        euler: [0, (rng() - 0.5) * 0.9, (rng() - 0.5) * 0.3],
-        scale: s,
-        anchor: [tx, BLOCK_H, tz],
+        position: [bx + (up[0] * h) / 2, baseY + (up[1] * h) / 2, bz + (up[2] * h) / 2],
+        euler: [lean, heading, 0],
+        scale: h,
+        anchor: [bx, baseY, bz],
         cell: [cx, cz],
         ink,
         tone: Math.floor(rng() * 4),

@@ -62,85 +62,77 @@ export function petalTexture(): CanvasTexture {
   return petal
 }
 
-let blade: CanvasTexture | null = null
+const blades: Partial<Record<'shaded' | 'flat', CanvasTexture>> = {}
 
 /**
  * A single curved, tapered grass blade. Drawn rather than extruded because a
  * cone cannot bend, and straight cones read as a row of spikes instead of grass.
+ *
+ * `shaded` darkens toward the base so a clump reads as a shadowed tuft; that
+ * is for the rim grass only. The blades standing in the code's corners are
+ * `flat`: they are ink, and a decoder's block binarizer treats any luma that
+ * strays inside a solid finder as a hole in it.
  */
-export function bladeTexture(): CanvasTexture {
-  if (blade) return blade
+export function bladeTexture(kind: 'shaded' | 'flat' = 'shaded'): CanvasTexture {
+  const cached = blades[kind]
+  if (cached) return cached
   const w = 64
   const h = 160
   const canvas = document.createElement('canvas')
   canvas.width = w
   canvas.height = h
   const g = canvas.getContext('2d')
-  if (!g) {
-    blade = new CanvasTexture(canvas)
-    return blade
+  const texture = new CanvasTexture(canvas)
+  blades[kind] = texture
+  if (!g) return texture
+  if (kind === 'shaded') {
+    const grad = g.createLinearGradient(0, 0, 0, h)
+    grad.addColorStop(0, '#ffffff')
+    grad.addColorStop(0.45, '#e6e6e6')
+    grad.addColorStop(1, '#8f8f8f')
+    g.fillStyle = grad
+  } else {
+    g.fillStyle = '#ffffff'
   }
-  g.fillStyle = '#ffffff'
   g.beginPath()
   g.moveTo(23, h)
   g.quadraticCurveTo(25, 82, 45, 5)
   g.quadraticCurveTo(53, 78, 41, h)
   g.closePath()
   g.fill()
-  blade = new CanvasTexture(canvas)
-  blade.colorSpace = SRGBColorSpace
-  blade.anisotropy = 4
-  return blade
+  texture.colorSpace = SRGBColorSpace
+  texture.anisotropy = 4
+  return texture
 }
 
-let tuft: CanvasTexture | null = null
+let mound: CanvasTexture | null = null
 
 /**
- * A bushy grass clump: a solid mound with a spiky crown. Standing up it reads as
- * a tuft; lying flat it is nearly a filled disc, which is what lets clumps tile
- * a finder module as solidly as leaves tile the rest of the code. Bounds match
- * `TUFT_HALF_X/Y` in leafShape.ts.
+ * Shading for the turf mounds under the corner grass: full colour on top,
+ * a little darker down the flank. Kept mild on purpose — the flank's rim is
+ * visible from overhead, and a decoder's block binarizer reads a luma step
+ * inside a solid finder as a hole in it.
  */
-export function tuftTexture(): CanvasTexture {
-  if (tuft) return tuft
-  const size = 128
+export function moundTexture(): CanvasTexture {
+  if (mound) return mound
   const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
+  canvas.width = 4
+  canvas.height = 64
   const g = canvas.getContext('2d')
   if (!g) {
-    tuft = new CanvasTexture(canvas)
-    return tuft
+    mound = new CanvasTexture(canvas)
+    return mound
   }
-  g.clearRect(0, 0, size, size)
-  g.fillStyle = '#ffffff'
-  // A full rounded body — lying flat it must cover its module as well as a
-  // leaf does, because the finder patterns are built from these — with a
-  // spiky crown that reads as grass when it stands up.
-  g.beginPath()
-  g.ellipse(64, 70, 58, 51, 0, 0, Math.PI * 2)
-  g.fill()
-  const spikes = [
-    [14, 44, 6, 18],
-    [28, 30, 22, 8],
-    [44, 22, 40, 4],
-    [60, 19, 58, 3],
-    [76, 20, 78, 4],
-    [92, 26, 96, 8],
-    [108, 38, 118, 16],
-  ]
-  for (const [bx, by, tx, ty] of spikes) {
-    g.beginPath()
-    g.moveTo(bx - 9, by + 6)
-    g.lineTo(tx, ty)
-    g.lineTo(bx + 9, by + 6)
-    g.closePath()
-    g.fill()
-  }
-  tuft = new CanvasTexture(canvas)
-  tuft.colorSpace = SRGBColorSpace
-  tuft.anisotropy = 4
-  return tuft
+  const grad = g.createLinearGradient(0, 0, 0, 64)
+  grad.addColorStop(0, '#ffffff')
+  grad.addColorStop(0.4, '#f6f6f6')
+  grad.addColorStop(0.6, '#d9d9d9')
+  grad.addColorStop(1, '#bdbdbd')
+  g.fillStyle = grad
+  g.fillRect(0, 0, 4, 64)
+  mound = new CanvasTexture(canvas)
+  mound.colorSpace = SRGBColorSpace
+  return mound
 }
 
 let maple: CanvasTexture | null = null

@@ -3,12 +3,12 @@ import { useFrame } from '@react-three/fiber'
 import { Color, InstancedMesh, Object3D } from 'three'
 import type { ModuleGrid } from '../qr/types'
 import { mulberry32 } from './hash'
-import { tuftTexture } from './leafTexture'
-import { sceneryOpacity } from './view'
-import { rightOf } from './orbit'
+import { bladeTexture } from './leafTexture'
 import { mixHex } from './palettes'
 import type { SceneRef } from './sceneState'
 import { islandExtent } from './tree'
+import { BLADE_W } from './TreeFoliage'
+import { sceneryOpacity } from './view'
 
 const dummy = new Object3D()
 dummy.rotation.order = 'YXZ'
@@ -17,31 +17,26 @@ const tint = new Color()
 interface Blade {
   x: number
   z: number
-  w: number
   h: number
-  /** Heading offset from the camera's, so no blade goes edge-on. */
-  yaw: number
-  /** Unit outward direction from the island centre. */
-  ox: number
-  oz: number
-  /** How far it leans outward, and its own scatter. */
-  leanOut: number
-  leanJitter: number
+  /** Fixed heading; the blade leans about its own axis after it. */
+  heading: number
+  lean: number
   shade: number
   phase: number
 }
 
 /**
- * Rim grass: the ring outside the code, which is the quiet zone from above and
- * so thins out on the way there. Same tuft silhouette as the grass standing on
- * the code's corners (see tree.ts), turned toward the camera.
+ * Rim grass: clumps of blades on the ring outside the code, each with its own
+ * heading and lean, the same blades that stand in the corner turf. They lean
+ * outward from the island and sway. From above the ring is the quiet zone,
+ * so on the way there they thin out.
  */
 export function Grass({ grid, scene, reduced }: { grid: ModuleGrid; scene: SceneRef; reduced: boolean }) {
   const mesh = useRef<InstancedMesh>(null)
   const island = islandExtent(grid.size)
   const origin = -(island - 1) / 2
   const key = useRef('')
-  const map = useMemo(() => tuftTexture(), [])
+  const map = useMemo(() => bladeTexture(), [])
 
   const blades = useMemo(() => {
     const rng = mulberry32(grid.size * 997 + 41)
@@ -52,21 +47,18 @@ export function Grass({ grid, scene, reduced }: { grid: ModuleGrid; scene: Scene
         if (rng() < 0.3) continue // clumps, not a continuous hedge
         const cx = origin + gx
         const cz = origin + gy
-        const tuft = 2 + Math.floor(rng() * 2)
-        for (let k = 0; k < tuft; k++) {
-          const x = cx + (rng() - 0.5) * 0.9
-          const z = cz + (rng() - 0.5) * 0.9
-          const r = Math.hypot(x, z) || 1
+        const count = 8 + Math.floor(rng() * 6)
+        for (let k = 0; k < count; k++) {
+          const x = cx + (rng() - 0.5) * 0.8
+          const z = cz + (rng() - 0.5) * 0.8
+          const outward = Math.atan2(x, z)
           list.push({
             x,
             z,
-            w: 0.75 + rng() * 0.35,
-            h: 0.7 + rng() * 0.5,
-            yaw: (rng() - 0.5) * 1.1,
-            ox: x / r,
-            oz: z / r,
-            leanOut: 0.18 + rng() * 0.3,
-            leanJitter: (rng() - 0.5) * 0.16,
+            h: 0.6 + rng() * 0.6,
+            // Heading is where the blade leans toward: mostly outward.
+            heading: outward + (rng() - 0.5) * 1.6,
+            lean: 0.15 + rng() * 0.45,
             shade: rng(),
             phase: rng() * Math.PI * 2,
           })
@@ -79,7 +71,7 @@ export function Grass({ grid, scene, reduced }: { grid: ModuleGrid; scene: Scene
   useFrame(({ clock }) => {
     const inst = mesh.current
     if (!inst) return
-    const { colors, yaw, pitch } = scene.current
+    const { colors, pitch } = scene.current
     const opacity = sceneryOpacity(pitch)
     const mat = inst.material
     if (!Array.isArray(mat)) {
@@ -90,16 +82,16 @@ export function Grass({ grid, scene, reduced }: { grid: ModuleGrid; scene: Scene
     if (opacity <= 0.01) return
 
     const t = reduced ? 0 : clock.elapsedTime
-    const [rx, rz] = rightOf(yaw)
     blades.forEach((blade, i) => {
-      const sway = reduced ? 0 : Math.sin(t * 1.4 + blade.phase) * 0.08
-      // Screen-space lean away from the island centre: the outward direction
-      // projected onto the camera's right axis, wherever the camera is now.
-      const outward = blade.ox * rx + blade.oz * rz
-      const lean = -outward * blade.leanOut + blade.leanJitter
-      dummy.position.set(blade.x, blade.h / 2, blade.z)
-      dummy.rotation.set(0, blade.yaw + yaw, lean + sway)
-      dummy.scale.set(blade.w, blade.h, 1)
+      const sway = reduced ? 0 : Math.sin(t * 1.4 + blade.phase) * 0.07
+      const lean = blade.lean + sway
+      // Pivot at the root: the centre sits half a length up the leaning axis.
+      const ux = Math.sin(lean) * Math.sin(blade.heading)
+      const uy = Math.cos(lean)
+      const uz = Math.sin(lean) * Math.cos(blade.heading)
+      dummy.position.set(blade.x + (ux * blade.h) / 2, (uy * blade.h) / 2, blade.z + (uz * blade.h) / 2)
+      dummy.rotation.set(lean, blade.heading, 0)
+      dummy.scale.set(blade.h, blade.h, 1)
       dummy.updateMatrix()
       inst.setMatrixAt(i, dummy.matrix)
     })
@@ -123,7 +115,7 @@ export function Grass({ grid, scene, reduced }: { grid: ModuleGrid; scene: Scene
       key={blades.length}
       frustumCulled={false}
     >
-      <planeGeometry args={[1, 1]} />
+      <planeGeometry args={[BLADE_W, 1]} />
       <meshBasicMaterial map={map} transparent alphaTest={0.45} side={2} />
     </instancedMesh>
   )

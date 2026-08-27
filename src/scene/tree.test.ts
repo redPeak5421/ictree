@@ -3,7 +3,9 @@ import { encodeGrid } from '../qr/encode'
 import { hashString } from './hash'
 import { footprint } from './leafShape'
 import {
-  BLOCK_H,
+  BLADE_H,
+  BLADE_LEAN,
+  BLADE_ROOT,
   BRANCH_OVERLAP,
   buildTree,
   isCornerModule,
@@ -116,17 +118,21 @@ describe('buildTree', () => {
     }
   })
 
-  it('stands small tufts on the turf, inside their module from above', () => {
-    const tufts = tree.leaves.filter((l) => l.kind === 'tuft')
-    expect(tufts.length).toBeGreaterThan(0)
-    for (const tuft of tufts) {
-      expect(tuft.euler[0]).toBe(0)
-      expect(tuft.position[1]).toBeCloseTo(BLOCK_H + tuft.scale / 2, 6)
-      // A standing plane's top-down outline is a line as long as its width;
-      // it must fit its module at any heading.
-      expect(tuft.scale * 0.9).toBeLessThanOrEqual(1)
-      expect(Math.abs(tuft.position[0] - tuft.cell[0])).toBeLessThanOrEqual(0.05 + 1e-9)
-      expect(Math.abs(tuft.position[2] - tuft.cell[1])).toBeLessThanOrEqual(0.05 + 1e-9)
+  it('roots a clump of leaning blades in every turf mound, tips over their own module', () => {
+    const blades = tree.leaves.filter((l) => l.kind === 'blade')
+    expect(blades.length).toBeGreaterThan(tree.lawns.length * 9)
+    for (const blade of blades) {
+      expect(blade.scale).toBeLessThanOrEqual(BLADE_H)
+      expect(blade.euler[0]).toBeGreaterThanOrEqual(0)
+      expect(blade.euler[0]).toBeLessThanOrEqual(BLADE_LEAN)
+      // The tip is the base plus the full length along the leaning up-vector;
+      // it must not reach past the neighbouring module's rim.
+      const tipX = blade.anchor[0] + Math.sin(blade.euler[0]) * Math.sin(blade.euler[1]) * blade.scale
+      const tipZ = blade.anchor[2] + Math.sin(blade.euler[0]) * Math.cos(blade.euler[1]) * blade.scale
+      // Width included (0.22 at scale 1, so 0.11 either side of the tip).
+      expect(Math.abs(tipX - blade.cell[0]) + 0.11 * blade.scale).toBeLessThanOrEqual(0.5)
+      expect(Math.abs(tipZ - blade.cell[1]) + 0.11 * blade.scale).toBeLessThanOrEqual(0.5)
+      expect(Math.hypot(blade.anchor[0] - blade.cell[0], blade.anchor[2] - blade.cell[1])).toBeLessThanOrEqual(BLADE_ROOT + 1e-9)
     }
   })
 

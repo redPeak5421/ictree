@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Color, InstancedMesh, Object3D, type Texture } from 'three'
 import { toLumaHex } from '../qr/contrast'
-import { leafTexture, mapleTexture, tuftTexture } from './leafTexture'
+import { bladeTexture, leafTexture, mapleTexture } from './leafTexture'
 import { foliageTones, mixHex, type SceneColors } from './palettes'
 import type { SceneRef } from './sceneState'
 import type { LeafInstance, TreeRig } from './tree'
@@ -10,13 +10,13 @@ import type { LeafInstance, TreeRig } from './tree'
 const dummy = new Object3D()
 const tint = new Color()
 
-/** Standing tufts lean back toward the camera by this much of its elevation. */
-export const TUFT_LEAN = 0
+/** Width of a grass blade at scale 1, in modules. */
+export const BLADE_W = 0.22
 
 interface Groups {
   ovate: LeafInstance[]
   maple: LeafInstance[]
-  tuft: LeafInstance[]
+  blade: LeafInstance[]
 }
 
 function grassTones(colors: SceneColors): string[] {
@@ -29,26 +29,25 @@ function grassTones(colors: SceneColors): string[] {
 }
 
 /**
- * The canopy is static geometry: each leaf's matrix is written once per rig
- * and its colour once per palette. Only the tufts on the corners turn, since
- * they are billboards that face the camera's heading.
+ * The canopy and the corner grass are static geometry: every matrix is
+ * written once per rig and every colour once per palette. Nothing here faces
+ * the camera — it is one object, seen from wherever the camera is.
  */
 export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
   const branchRef = useRef<InstancedMesh>(null)
   const ovateRef = useRef<InstancedMesh>(null)
   const mapleRef = useRef<InstancedMesh>(null)
-  const tuftRef = useRef<InstancedMesh>(null)
+  const bladeRef = useRef<InstancedMesh>(null)
   const leafMap = useMemo(() => leafTexture(), [])
   const mapleMap = useMemo(() => mapleTexture(), [])
-  const tuftMap = useMemo(() => tuftTexture(), [])
+  const bladeMap = useMemo(() => bladeTexture('flat'), [])
   const colorKey = useRef('')
-  const lastYaw = useRef(NaN)
 
   const groups = useMemo<Groups>(
     () => ({
       ovate: rig.leaves.filter((l) => l.kind === 'leaf' && l.shape === 'ovate'),
       maple: rig.leaves.filter((l) => l.kind === 'leaf' && l.shape === 'maple'),
-      tuft: rig.leaves.filter((l) => l.kind === 'tuft'),
+      blade: rig.leaves.filter((l) => l.kind === 'blade'),
     }),
     [rig],
   )
@@ -73,6 +72,7 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
     for (const [mesh, items] of [
       [ovateRef.current, groups.ovate],
       [mapleRef.current, groups.maple],
+      [bladeRef.current, groups.blade],
     ] as const) {
       if (!mesh) continue
       items.forEach((leaf, i) => {
@@ -85,11 +85,10 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
       mesh.instanceMatrix.needsUpdate = true
     }
     colorKey.current = ''
-    lastYaw.current = NaN
   }, [rig, groups])
 
   useFrame(() => {
-    const { colors, yaw, pitch } = scene.current
+    const { colors } = scene.current
 
     const next = `${colors.foliage}|${colors.foliageVar}|${colors.accent}|${colors.trunk}|${colors.grass}|${colors.grassTip}`
     if (next !== colorKey.current) {
@@ -125,26 +124,24 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
         })
         if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
       }
-      const tufts = tuftRef.current
-      if (tufts) {
-        const grass = grassTones(colors).map((hex) => new Color(hex))
-        groups.tuft.forEach((leaf, i) => tufts.setColorAt(i, grass[leaf.tone]!))
-        if (tufts.instanceColor) tufts.instanceColor.needsUpdate = true
+      const blades = bladeRef.current
+      if (blades) {
+        // Blades are ink from above, like the turf they stand in: pinned to
+        // the module's luma, greener than the turf only in hue. Anything
+        // brighter reads as a hole in the finder to a block binarizer.
+        const grass = grassTones(colors)
+        const bladeCache = new Map<string, Color>()
+        groups.blade.forEach((leaf, i) => {
+          const key = `${leaf.tone}|${leaf.ink}`
+          let tint = bladeCache.get(key)
+          if (!tint) {
+            tint = new Color(toLumaHex(grass[leaf.tone]!, leaf.ink + 0.02))
+            bladeCache.set(key, tint)
+          }
+          blades.setColorAt(i, tint)
+        })
+        if (blades.instanceColor) blades.instanceColor.needsUpdate = true
       }
-    }
-
-    const tufts = tuftRef.current
-    if (tufts && yaw !== lastYaw.current) {
-      lastYaw.current = yaw
-      groups.tuft.forEach((leaf, i) => {
-        const e = leaf.euler
-        dummy.position.set(leaf.position[0], leaf.position[1], leaf.position[2])
-        dummy.rotation.set(e[0] - pitch * TUFT_LEAN, e[1] + yaw, e[2], 'YXZ')
-        dummy.scale.setScalar(leaf.scale)
-        dummy.updateMatrix()
-        tufts.setMatrixAt(i, dummy.matrix)
-      })
-      tufts.instanceMatrix.needsUpdate = true
     }
   })
 
@@ -188,13 +185,13 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
         {cutout(mapleMap)}
       </instancedMesh>
       <instancedMesh
-        ref={tuftRef}
-        args={[undefined, undefined, groups.tuft.length]}
-        key={`t${groups.tuft.length}`}
+        ref={bladeRef}
+        args={[undefined, undefined, groups.blade.length]}
+        key={`t${groups.blade.length}`}
         frustumCulled={false}
       >
-        <planeGeometry args={[1, 1]} />
-        {cutout(tuftMap)}
+        <planeGeometry args={[BLADE_W, 1]} />
+        {cutout(bladeMap)}
       </instancedMesh>
     </group>
   )
