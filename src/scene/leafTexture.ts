@@ -1,42 +1,41 @@
 import { CanvasTexture, SRGBColorSpace } from 'three'
+import type { VegetationForm } from './grassLayout'
+import { carpetOutline } from './grassLayout'
+import { silhouette, type LeafShape } from './leafShape'
 
-let cached: CanvasTexture | null = null
+const leaves: Partial<Record<LeafShape, CanvasTexture>> = {}
 
 /**
- * One broad ovate leaf, shared by the canopy, the ground litter and the autumn
- * particles. Drawn into a canvas so there is no image asset to ship. Its
- * bounding box is what `leafShape.ts` declares — keep the two in step: the tree
- * builder uses those extents to guarantee a leaf never crosses a module edge.
+ * Draw a leaf from the same normalized outline used by layout and projection
+ * tests, so alpha pixels and module-boundary maths cannot drift apart.
  */
-export function leafTexture(): CanvasTexture {
-  if (cached) return cached
+export function leafTexture(shape: LeafShape = 'ovate'): CanvasTexture {
+  const found = leaves[shape]
+  if (found) return found
   const size = 128
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
   const g = canvas.getContext('2d')
+  const texture = new CanvasTexture(canvas)
+  leaves[shape] = texture
   if (!g) {
-    cached = new CanvasTexture(canvas)
-    return cached
+    return texture
   }
   g.clearRect(0, 0, size, size)
   g.fillStyle = '#ffffff'
   g.beginPath()
-  // A broad, nearly round leaf with a short tip and a petiole notch. Fuller than
-  // a maple so a cluster of them can tile a module solidly.
-  g.moveTo(64, 4)
-  g.bezierCurveTo(96, 6, 119, 32, 119, 66)
-  g.bezierCurveTo(119, 98, 92, 122, 66, 123)
-  g.lineTo(64, 116)
-  g.lineTo(62, 123)
-  g.bezierCurveTo(36, 122, 9, 98, 9, 66)
-  g.bezierCurveTo(9, 32, 32, 6, 64, 4)
+  silhouette(shape).forEach(([x, y], index) => {
+    const px = (x + 0.5) * size
+    const py = (0.5 - y) * size
+    if (index === 0) g.moveTo(px, py)
+    else g.lineTo(px, py)
+  })
   g.closePath()
   g.fill()
-  cached = new CanvasTexture(canvas)
-  cached.colorSpace = SRGBColorSpace
-  cached.anisotropy = 4
-  return cached
+  texture.colorSpace = SRGBColorSpace
+  texture.anisotropy = 4
+  return texture
 }
 
 let petal: CanvasTexture | null = null
@@ -62,28 +61,24 @@ export function petalTexture(): CanvasTexture {
   return petal
 }
 
-const blades: Partial<Record<'shaded' | 'flat', CanvasTexture>> = {}
+const vegetation = new Map<string, CanvasTexture>()
 
-/**
- * A single curved, tapered grass blade. Drawn rather than extruded because a
- * cone cannot bend, and straight cones read as a row of spikes instead of grass.
- *
- * `shaded` darkens toward the base so a clump reads as a shadowed tuft; that
- * is for the rim grass only. The blades standing in the code's corners are
- * `flat`: they are ink, and a decoder's block binarizer treats any luma that
- * strays inside a solid finder as a hole in it.
- */
-export function bladeTexture(kind: 'shaded' | 'flat' = 'shaded'): CanvasTexture {
-  const cached = blades[kind]
+/** Procedural blade, broad-leaf, and seed-head cutouts for living ground cover. */
+export function vegetationTexture(
+  form: VegetationForm,
+  kind: 'shaded' | 'flat' = 'shaded',
+): CanvasTexture {
+  const key = `${form}:${kind}`
+  const cached = vegetation.get(key)
   if (cached) return cached
-  const w = 64
+  const w = 96
   const h = 160
   const canvas = document.createElement('canvas')
   canvas.width = w
   canvas.height = h
   const g = canvas.getContext('2d')
   const texture = new CanvasTexture(canvas)
-  blades[kind] = texture
+  vegetation.set(key, texture)
   if (!g) return texture
   if (kind === 'shaded') {
     const grad = g.createLinearGradient(0, 0, 0, h)
@@ -94,12 +89,43 @@ export function bladeTexture(kind: 'shaded' | 'flat' = 'shaded'): CanvasTexture 
   } else {
     g.fillStyle = '#ffffff'
   }
-  g.beginPath()
-  g.moveTo(23, h)
-  g.quadraticCurveTo(25, 82, 45, 5)
-  g.quadraticCurveTo(53, 78, 41, h)
-  g.closePath()
-  g.fill()
+  if (form === 'blade') {
+    // A fan of blades so one instance reads as a small tuft, not a stalk.
+    for (const [x0, tipX, tipY] of [[16, 10, 28], [30, 26, 12], [44, 48, 4], [58, 72, 14], [70, 88, 30]] as const) {
+      g.beginPath()
+      g.moveTo(x0, h)
+      g.quadraticCurveTo(x0 + 5, 92, tipX, tipY)
+      g.quadraticCurveTo(x0 + 16, 90, x0 + 14, h)
+      g.closePath()
+      g.fill()
+    }
+  } else if (form === 'broad') {
+    g.beginPath()
+    g.moveTo(34, h)
+    g.bezierCurveTo(18, 112, 10, 64, 48, 8)
+    g.bezierCurveTo(90, 52, 82, 108, 62, h)
+    g.closePath()
+    g.fill()
+  } else {
+    // A stem with a forked seed head breaks the repeated single-tip rhythm.
+    g.strokeStyle = kind === 'flat' ? '#ffffff' : '#d8d8d8'
+    g.lineCap = 'round'
+    g.lineWidth = 9
+    g.beginPath()
+    g.moveTo(48, h)
+    g.quadraticCurveTo(48, 92, 52, 32)
+    g.stroke()
+    g.lineWidth = 7
+    for (const [tx, ty] of [[24, 16], [48, 7], [73, 20]] as const) {
+      g.beginPath()
+      g.moveTo(51, 48)
+      g.lineTo(tx, ty + 8)
+      g.stroke()
+      g.beginPath()
+      g.ellipse(tx, ty, 8, 14, (tx - 48) * 0.02, 0, Math.PI * 2)
+      g.fill()
+    }
+  }
   texture.colorSpace = SRGBColorSpace
   texture.anisotropy = 4
   return texture
@@ -135,53 +161,44 @@ export function moundTexture(): CanvasTexture {
   return mound
 }
 
-let maple: CanvasTexture | null = null
+let carpet: CanvasTexture | null = null
 
-/**
- * The leaf as it hangs on the tree: a five-lobed maple, shaded from its tip
- * down so a wall of them reads as a crown with depth rather than as confetti.
- * It is never what lands in the code — each leaf swaps to the broad
- * `leafTexture` silhouette mid-flight, because a lobed outline cannot tile a
- * module solidly and the shading would pull the module off its luma.
- */
-export function mapleTexture(): CanvasTexture {
-  if (maple) return maple
+/** Grass tuft used as finder-module ink: solid occupancy, blade streaks inside. */
+export function carpetTexture(): CanvasTexture {
+  if (carpet) return carpet
   const size = 128
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
   const g = canvas.getContext('2d')
-  if (!g) {
-    maple = new CanvasTexture(canvas)
-    return maple
-  }
+  const texture = new CanvasTexture(canvas)
+  carpet = texture
+  if (!g) return texture
   g.clearRect(0, 0, size, size)
-  const cx = 64
-  const cy = 66
-  const R = 60
-  // Polar outline: five lobes with the tips at 12 o'clock and every 72deg
-  // from there, the two lowest lobes a little shorter, and the sinus between
-  // them at 6 o'clock reading as the petiole notch.
   g.beginPath()
-  const N = 240
-  for (let i = 0; i <= N; i++) {
-    const th = (i / N) * Math.PI * 2
-    const lobe = ((Math.cos(5 * th) + 1) / 2) ** 1.7
-    const r = R * (0.5 + 0.5 * lobe) * (0.88 + 0.12 * Math.cos(th))
-    const x = cx + r * Math.sin(th)
-    const y = cy - r * Math.cos(th)
-    if (i === 0) g.moveTo(x, y)
-    else g.lineTo(x, y)
-  }
+  carpetOutline().forEach(([x, y], index) => {
+    const px = (x + 0.5) * size
+    const py = (0.5 - y) * size
+    if (index === 0) g.moveTo(px, py)
+    else g.lineTo(px, py)
+  })
   g.closePath()
-  const grad = g.createLinearGradient(0, cy - R, 0, cy + R)
-  grad.addColorStop(0, '#ffffff')
-  grad.addColorStop(0.55, '#ececec')
-  grad.addColorStop(1, '#b9b9b9')
-  g.fillStyle = grad
+  g.fillStyle = '#ffffff'
   g.fill()
-  maple = new CanvasTexture(canvas)
-  maple.colorSpace = SRGBColorSpace
-  maple.anisotropy = 4
-  return maple
+  g.save()
+  g.clip()
+  g.strokeStyle = '#dedede'
+  g.lineWidth = 3
+  g.lineCap = 'round'
+  for (let i = 0; i < 14; i++) {
+    const x = 18 + (i * 7.4) % 92
+    g.beginPath()
+    g.moveTo(x + 6, size - 10)
+    g.quadraticCurveTo(x + 4, 64, x + ((i % 3) - 1) * 10, 12 + (i % 5) * 4)
+    g.stroke()
+  }
+  g.restore()
+  texture.colorSpace = SRGBColorSpace
+  texture.anisotropy = 4
+  return texture
 }

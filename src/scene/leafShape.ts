@@ -1,32 +1,103 @@
 /**
- * Geometry of the leaf silhouette that `leafTexture` draws, kept free of DOM so
- * the tree builder and its tests can reason about footprints in node.
- *
- * The ovate leaf is inset inside its unit plane: these are the half-extents of
- * its bounding box, in plane units (slightly conservative vs. the drawn path).
+ * DOM-free leaf geometry shared by layout, textures, and top-down QR tests.
+ * Coordinates live in the unit plane used by Three.js PlaneGeometry.
  */
-export const LEAF_HALF_X = 0.43
-export const LEAF_HALF_Y = 0.47
 
-export type Silhouette = 'leaf'
+export type LeafShape = 'ovate' | 'oak' | 'maple' | 'cherry'
+/** Compatibility for the pre-species tree builder; remove once it passes shapes directly. */
+export type Silhouette = LeafShape | 'leaf'
+export type Point2 = readonly [number, number]
 
-export function halfExtents(_kind: Silhouette): [number, number] {
-  return [LEAF_HALF_X, LEAF_HALF_Y]
+function ellipse(count: number, halfX: number, halfY: number, ripple = 0, teeth = 0): readonly Point2[] {
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (index / count) * Math.PI * 2
+    const edge = 1 - ripple + ripple * ((Math.cos(teeth * angle) + 1) / 2)
+    return [Math.sin(angle) * halfX * edge, Math.cos(angle) * halfY * edge] as const
+  })
 }
 
-/**
- * World x/z half-extents of a flat silhouette at scale 1 whose heading about
- * the vertical is `phi`. Symmetric in phi, so the sign convention of the
- * renderer's euler order does not matter.
- */
-export function footprint(phi: number, kind: Silhouette = 'leaf'): [number, number] {
-  const [hx, hy] = halfExtents(kind)
+function superellipse(count: number, halfX: number, halfY: number, exponent: number): readonly Point2[] {
+  const power = 2 / exponent
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (index / count) * Math.PI * 2
+    const sin = Math.sin(angle)
+    const cos = Math.cos(angle)
+    return [
+      Math.sign(sin) * Math.abs(sin) ** power * halfX,
+      Math.sign(cos) * Math.abs(cos) ** power * halfY,
+    ] as const
+  })
+}
+
+function mapleOutline(): readonly Point2[] {
+  const count = 80
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (index / count) * Math.PI * 2
+    const lobe = ((Math.cos(5 * angle) + 1) / 2) ** 1.7
+    const radius = 0.49 * (0.5 + 0.5 * lobe) * (0.88 + 0.12 * Math.cos(angle))
+    return [Math.sin(angle) * radius, Math.cos(angle) * radius] as const
+  })
+}
+
+function oakOutline(): readonly Point2[] {
+  const count = 64
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (index / count) * Math.PI * 2
+    const lobes = ((Math.cos(6 * angle) + 1) / 2) ** 1.35
+    const radius = 0.35 + lobes * 0.13
+    return [Math.sin(angle) * radius * 0.9, Math.cos(angle) * radius] as const
+  })
+}
+
+const OUTLINES: Record<LeafShape, readonly Point2[]> = {
+  ovate: superellipse(64, 0.48, 0.49, 2.8),
+  oak: oakOutline(),
+  maple: mapleOutline(),
+  cherry: ellipse(56, 0.32, 0.49, 0.045, 14),
+}
+
+function normalizedShape(shape: Silhouette): LeafShape {
+  return shape === 'leaf' ? 'ovate' : shape
+}
+
+export function silhouette(shape: Silhouette = 'ovate'): readonly Point2[] {
+  return OUTLINES[normalizedShape(shape)]
+}
+
+/** DOM-free renderer routing, kept beside the complete supported shape union. */
+export function textureKindForLeafShape(shape: LeafShape): LeafShape {
+  return shape
+}
+
+export function boundsOfOutline(outline: readonly Point2[]): [number, number] {
+  let halfX = 0
+  let halfY = 0
+  for (const [x, y] of outline) {
+    halfX = Math.max(halfX, Math.abs(x))
+    halfY = Math.max(halfY, Math.abs(y))
+  }
+  return [halfX, halfY]
+}
+
+const EXTENTS: Record<LeafShape, [number, number]> = {
+  ovate: boundsOfOutline(OUTLINES.ovate),
+  oak: boundsOfOutline(OUTLINES.oak),
+  maple: boundsOfOutline(OUTLINES.maple),
+  cherry: boundsOfOutline(OUTLINES.cherry),
+}
+
+export function halfExtents(shape: Silhouette = 'ovate'): [number, number] {
+  return EXTENTS[normalizedShape(shape)]
+}
+
+/** World x/z half-extents of a flat silhouette at scale 1. */
+export function footprint(phi: number, shape: Silhouette = 'ovate'): [number, number] {
+  const [halfX, halfY] = halfExtents(shape)
   const c = Math.abs(Math.cos(phi))
   const s = Math.abs(Math.sin(phi))
-  return [hx * c + hy * s, hx * s + hy * c]
+  return [halfX * c + halfY * s, halfX * s + halfY * c]
 }
 
-/** Allowed extents from a module's centre, per side, in module units. */
 export interface Bounds {
   left: number
   right: number
@@ -34,26 +105,27 @@ export interface Bounds {
   front: number
 }
 
-/**
- * Largest scale at which a leaf centred at (ox, oz) with heading `phi` stays
- * inside `bounds`. This is the guarantee that a leaf never crosses into a light
- * module: the footprint is computed from the silhouette's true extents, not from
- * a bounding circle, so edge leaves can reach their module's edge.
- */
+/** Largest scale at which the rotated outline stays inside asymmetric bounds. */
 export function fitScale(
   ox: number,
   oz: number,
   phi: number,
-  b: Bounds,
+  bounds: Bounds,
   cap: number,
-  kind: Silhouette = 'leaf',
+  shape: Silhouette = 'ovate',
 ): number {
-  const [ex, ez] = footprint(phi, kind)
-  const s = Math.min((b.right - ox) / ex, (ox - b.left) / ex, (b.front - oz) / ez, (oz - b.back) / ez)
-  return Math.max(0, Math.min(cap, s * 0.985))
+  const [extentX, extentZ] = footprint(phi, shape)
+  const scale = Math.min(
+    (bounds.right - ox) / extentX,
+    (ox - bounds.left) / extentX,
+    (bounds.front - oz) / extentZ,
+    (oz - bounds.back) / extentZ,
+  )
+  return Math.max(0, Math.min(cap, scale * 0.985))
 }
 
 export interface Slot {
+  id: number
   ox: number
   oz: number
   phi: number
@@ -61,29 +133,28 @@ export interface Slot {
 }
 
 /**
- * Where the leaves of one dark module land, in module units. Ordered by how
- * much coverage each slot buys, so a shorter prefix is still the best layout at
- * that count. Edge and corner slots face their long axis along the edge they
- * sit on, which is what lets them reach it.
+ * Coverage-first module slots. IDs are stable ownership keys: a module may use
+ * each ID once, and must never repeat the same pack at another crown height.
  */
 export function qrSlots(count: number, rng: () => number): Slot[] {
-  const j = () => (rng() - 0.5) * 0.06
-  const any = () => rng() * Math.PI * 2
-  const near = (phi: number) => phi + (rng() - 0.5) * 0.5
-  const slots: Slot[] = [
-    { ox: j(), oz: j(), phi: any(), cap: 1.0 },
-    { ox: 0.28 + j(), oz: j(), phi: near(0), cap: 0.9 },
-    { ox: -0.28 + j(), oz: j(), phi: near(0), cap: 0.9 },
-    { ox: j(), oz: 0.28 + j(), phi: near(Math.PI / 2), cap: 0.9 },
-    { ox: j(), oz: -0.28 + j(), phi: near(Math.PI / 2), cap: 0.9 },
-    { ox: 0.16 + j(), oz: 0.16 + j(), phi: any(), cap: 0.8 },
-    { ox: -0.16 + j(), oz: 0.16 + j(), phi: any(), cap: 0.8 },
-    { ox: 0.16 + j(), oz: -0.16 + j(), phi: any(), cap: 0.8 },
-    { ox: -0.16 + j(), oz: -0.16 + j(), phi: any(), cap: 0.8 },
-    { ox: 0.3 + j(), oz: 0.3 + j(), phi: near(Math.PI / 4), cap: 0.75 },
-    { ox: -0.3 + j(), oz: 0.3 + j(), phi: near(-Math.PI / 4), cap: 0.75 },
-    { ox: 0.3 + j(), oz: -0.3 + j(), phi: near(-Math.PI / 4), cap: 0.75 },
-    { ox: -0.3 + j(), oz: -0.3 + j(), phi: near(Math.PI / 4), cap: 0.75 },
+  const jitter = () => (rng() - 0.5) * 0.02
+  const near = (phi: number) => phi + (rng() - 0.5) * 0.18
+  const values: Omit<Slot, 'id'>[] = [
+    { ox: jitter(), oz: jitter(), phi: near(0), cap: 1 },
+    { ox: 0.28 + jitter(), oz: jitter(), phi: near(0), cap: 0.9 },
+    { ox: -0.28 + jitter(), oz: jitter(), phi: near(0), cap: 0.9 },
+    { ox: jitter(), oz: 0.28 + jitter(), phi: near(Math.PI / 2), cap: 0.9 },
+    { ox: jitter(), oz: -0.28 + jitter(), phi: near(Math.PI / 2), cap: 0.9 },
+    { ox: 0.16 + jitter(), oz: 0.16 + jitter(), phi: near(0), cap: 0.8 },
+    { ox: -0.16 + jitter(), oz: 0.16 + jitter(), phi: near(Math.PI / 2), cap: 0.8 },
+    { ox: 0.16 + jitter(), oz: -0.16 + jitter(), phi: near(Math.PI / 2), cap: 0.8 },
+    { ox: -0.16 + jitter(), oz: -0.16 + jitter(), phi: near(0), cap: 0.8 },
+    { ox: 0.3 + jitter(), oz: 0.3 + jitter(), phi: near(Math.PI / 4), cap: 0.75 },
+    { ox: -0.3 + jitter(), oz: 0.3 + jitter(), phi: near(-Math.PI / 4), cap: 0.75 },
+    { ox: 0.3 + jitter(), oz: -0.3 + jitter(), phi: near(-Math.PI / 4), cap: 0.75 },
+    { ox: -0.3 + jitter(), oz: -0.3 + jitter(), phi: near(Math.PI / 4), cap: 0.75 },
   ]
-  return slots.slice(0, Math.max(1, Math.min(slots.length, count)))
+  return values
+    .map((slot, id) => ({ id, ...slot }))
+    .slice(0, Math.max(1, Math.min(values.length, count)))
 }

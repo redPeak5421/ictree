@@ -11,6 +11,7 @@ import type { SceneRef } from './sceneState'
 import { TreeFoliage } from './TreeFoliage'
 import { hashString } from './hash'
 import { buildTree, islandExtent } from './tree'
+import { resolveTreeChoice, type TreeVariety } from './treeSpecies'
 import { OVERHEAD, squareYaw } from './view'
 
 interface Pointer {
@@ -31,19 +32,25 @@ const TAP_MS = 600
 
 export function TreeCanvas({
   grid,
+  variety = 'auto',
   scene,
   reduced,
   onToggle,
   onOverhead,
 }: {
   grid: ModuleGrid
+  variety?: TreeVariety | 'auto'
   scene: SceneRef
   reduced: boolean
   onToggle: () => void
   onOverhead: (overhead: boolean) => void
 }) {
   const island = islandExtent(grid.size)
-  const rig = useMemo(() => buildTree(grid, hashString(grid.payload)), [grid])
+  const choice = resolveTreeChoice(grid.payload, variety)
+  const rig = useMemo(
+    () => buildTree(grid, hashString(grid.payload), choice),
+    [grid, choice.species, choice.habit],
+  )
   const bg = scene.current.colors.bg
   const pointer = useRef<Pointer | null>(null)
   const [grabbing, setGrabbing] = useState(false)

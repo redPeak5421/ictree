@@ -52,7 +52,7 @@ describe('cameraPose', () => {
 })
 
 describe('view helpers', () => {
-  it('thins scenery only near overhead', () => {
+  it('thins weather only near overhead', () => {
     expect(sceneryOpacity(VIEW_PITCH)).toBe(1)
     expect(sceneryOpacity(1.0)).toBe(1)
     expect(sceneryOpacity(OVERHEAD)).toBe(0)

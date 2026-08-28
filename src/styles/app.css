@@ -163,6 +163,12 @@ body,
   gap: 6px;
 }
 
+.variety-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 6px;
+}
+
 .season-btn {
   height: 40px;
   border: 0;

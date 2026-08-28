@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ModuleGrid } from '../qr/types'
 import type { PaletteId, SceneColors, Season } from '../scene/palettes'
+import type { TreeVariety } from '../scene/treeSpecies'
 import { downloadQrPng } from '../share/exportPng'
 import { shareUrl } from '../share/params'
 import { ShareIcon } from './icons'
@@ -9,12 +10,14 @@ export function ShareMenu({
   url,
   season,
   palette,
+  variety,
   grid,
   colors,
 }: {
   url: string
   season: Season
   palette: PaletteId
+  variety: TreeVariety | 'auto'
   grid: ModuleGrid
   colors: SceneColors
 }) {
@@ -38,7 +41,7 @@ export function ShareMenu({
     }
   }, [open])
 
-  const link = shareUrl(window.location.origin, window.location.pathname, { url, season, palette })
+  const link = shareUrl(window.location.origin, window.location.pathname, { url, season, palette, variety })
 
   const copy = async () => {
     try {

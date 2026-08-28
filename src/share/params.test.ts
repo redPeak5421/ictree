@@ -7,11 +7,13 @@ describe('share params', () => {
       url: 'https://example.com/a b',
       season: 'spring',
       palette: 'coral',
+      variety: 'maple',
     })
     expect(parseShareParams(search)).toEqual({
       url: 'https://example.com/a b',
       season: 'spring',
       palette: 'coral',
+      variety: 'maple',
     })
   })
 
@@ -20,11 +22,19 @@ describe('share params', () => {
       url: '',
       season: 'autumn',
       palette: 'default',
+      variety: 'auto',
     })
-    expect(parseShareParams('?s=winter&p=neon&u=ok')).toEqual({
+    expect(parseShareParams('?s=winter&p=neon&u=ok&t=willow')).toEqual({
       url: 'ok',
       season: 'autumn',
       palette: 'default',
+      variety: 'auto',
+    })
+    expect(parseShareParams('?t=sparse')).toEqual({
+      url: '',
+      season: 'autumn',
+      palette: 'default',
+      variety: 'sparse',
     })
   })
 })

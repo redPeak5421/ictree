@@ -6,6 +6,7 @@ import { QrFallback } from '../ui/QrFallback'
 import { SeasonBar } from '../ui/SeasonBar'
 import { ShareMenu } from '../ui/ShareMenu'
 import { UrlField } from '../ui/UrlField'
+import { VarietyBar } from '../ui/VarietyBar'
 import { useTreeState } from './useTreeState'
 
 export function App() {
@@ -17,6 +18,7 @@ export function App() {
         {state.webgl ? (
           <TreeCanvas
             grid={state.grid}
+            variety={state.variety}
             scene={state.scene}
             reduced={state.reduced}
             onToggle={state.toggleView}
@@ -35,10 +37,12 @@ export function App() {
             url={state.url}
             season={state.season}
             palette={state.palette}
+            variety={state.variety}
             grid={state.grid}
             colors={state.colors}
           />
         </div>
+        <VarietyBar payload={state.grid.payload} variety={state.variety} onChange={state.setVariety} />
         <div className="season-row">
           <SeasonBar season={state.season} onChange={state.setSeason} />
           <MuteButton muted={state.muted} onToggle={state.toggleMuted} />

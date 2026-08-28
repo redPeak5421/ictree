@@ -9,9 +9,9 @@ import {
   BRANCH_OVERLAP,
   buildTree,
   isCornerModule,
-  LIGHT_OVERLAP,
   REACH,
   SEAM_OVERLAP,
+  SLAB_H,
   type BranchInstance,
 } from './tree'
 
@@ -39,9 +39,12 @@ function endpoints(b: BranchInstance): [number, number, number][] {
 describe('buildTree', () => {
   it('is deterministic for the same payload', () => {
     const again = buildTree(grid, hashString(grid.payload))
+    expect(tree.species).toBe('maple')
+    expect(again.species).toBe(tree.species)
     expect(tree.branches.length).toBeGreaterThan(8)
     expect(tree.leaves.length).toBeGreaterThan(80)
     expect(again.leaves[0]).toEqual(tree.leaves[0])
+    expect(again.finderGrass[0]).toEqual(tree.finderGrass[0])
     expect(again.branches[0]).toEqual(tree.branches[0])
   })
 
@@ -57,20 +60,16 @@ describe('buildTree', () => {
       const mx = Math.round(cx + half)
       const my = Math.round(cz + half)
       expect(isDark(mx, my)).toBe(true)
-      if (leaf.kind !== 'leaf') continue
       // The flat footprint bounds the top-down outline at any lean, since
       // leaning only shrinks it; the heading is the second euler.
-      const [ex, ez] = footprint(leaf.euler[1], leaf.kind).map((e) => e * leaf.scale) as [number, number]
+      const [ex, ez] = footprint(leaf.euler[1], leaf.shape).map((e) => e * leaf.scale) as [number, number]
       const left = leaf.position[0] - ex - cx
       const right = leaf.position[0] + ex - cx
       const back = leaf.position[2] - ez - cz
       const front = leaf.position[2] + ez - cz
       const eps = 1e-6
-      // Into a dark neighbour freely; into a light one only a surface maple's
-      // tip, and only as far as leaves its centre clean for a decoder's sample.
-      const light = leaf.shape === 'maple' ? LIGHT_OVERLAP : 0
-      const reach = (x: number, y: number) => (isDark(x, y) ? SEAM_OVERLAP : light)
-      expect(LIGHT_OVERLAP).toBeLessThanOrEqual(0.15)
+      // Into a dark neighbour freely; never into a light module.
+      const reach = (x: number, y: number) => (isDark(x, y) ? SEAM_OVERLAP : 0)
       expect(left).toBeGreaterThanOrEqual(-0.5 - reach(mx - 1, my) - eps)
       expect(right).toBeLessThanOrEqual(0.5 + reach(mx + 1, my) + eps)
       expect(back).toBeGreaterThanOrEqual(-0.5 - reach(mx, my - 1) - eps)
@@ -87,7 +86,7 @@ describe('buildTree', () => {
 
   it('covers every dark module: leaves outside the corners, turf inside them', () => {
     const leafCells = new Set(
-      tree.leaves.filter((l) => l.kind === 'leaf').map((l) => `${l.cell[0]},${l.cell[1]}`),
+      tree.leaves.map((l) => `${l.cell[0]},${l.cell[1]}`),
     )
     const lawnCells = new Set(tree.lawns.map((l) => `${l.cell[0]},${l.cell[1]}`))
     for (const cell of grid.cells) {
@@ -98,41 +97,107 @@ describe('buildTree', () => {
     }
   })
 
-  it('lays a broad flat base under every column and maples above it', () => {
-    const byCell = new Map<string, { ovate: number; maple: number }>()
+  it('assigns each dark module one crown layer and one unique thirteen-slot pack', () => {
+    const byCell = new Map<string, typeof tree.leaves>()
     for (const leaf of tree.leaves) {
-      if (leaf.kind !== 'leaf') continue
       const key = `${leaf.cell[0]},${leaf.cell[1]}`
-      const entry = byCell.get(key) ?? { ovate: 0, maple: 0 }
-      entry[leaf.shape]++
+      const entry = byCell.get(key) ?? []
+      entry.push(leaf)
       byCell.set(key, entry)
     }
-    for (const entry of byCell.values()) {
-      expect(entry.ovate).toBeGreaterThanOrEqual(10)
-      expect(entry.maple).toBeGreaterThanOrEqual(5)
+    const canopyModules = grid.cells.filter(
+      (cell) => cell.dark && !isCornerModule(cell.x, cell.y, grid.size),
+    ).length
+    expect(tree.leaves).toHaveLength(canopyModules * 13)
+    const layers = new Set<string>()
+    const ownedHeights: number[] = []
+    for (const leaves of byCell.values()) {
+      expect(leaves).toHaveLength(13)
+      expect(leaves.map((leaf) => leaf.slot).sort((a, b) => a - b)).toEqual([...Array(13).keys()])
+      expect(new Set(leaves.map((leaf) => leaf.layer)).size).toBe(1)
+      layers.add(leaves[0]!.layer)
+      const ys = leaves.map((leaf) => leaf.position[1])
+      expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(0.7)
+      ownedHeights.push(ys.reduce((sum, y) => sum + y, 0) / ys.length)
     }
-    for (const leaf of tree.leaves) {
-      if (leaf.kind === 'leaf' && leaf.shape === 'ovate') {
-        expect(leaf.euler[0]).toBeLessThanOrEqual(-Math.PI / 2 + 0.3 + 1e-9)
-      }
+    expect(layers).toEqual(new Set(['low', 'middle', 'high']))
+    expect(new Set(ownedHeights.map((height) => height.toFixed(1))).size).toBeGreaterThanOrEqual(20)
+  })
+
+  it('tilts coverage leaves enough to avoid horizontal plates without approaching vertical', () => {
+    const coverage = tree.leaves.filter((leaf) => leaf.shape === 'ovate')
+    const tilts = coverage.map((leaf) => leaf.euler[0] + Math.PI / 2)
+    expect(Math.min(...tilts)).toBeGreaterThanOrEqual(0.05)
+    expect(Math.max(...tilts)).toBeLessThanOrEqual(0.28)
+    expect(tilts.reduce((sum, value) => sum + value, 0) / tilts.length).toBeGreaterThanOrEqual(0.14)
+    expect(new Set(tilts.map((value) => value.toFixed(2))).size).toBeGreaterThanOrEqual(12)
+  })
+
+  it('caps branch clutter after removing duplicate vertical attractors', () => {
+    const canopyModules = grid.cells.filter(
+      (cell) => cell.dark && !isCornerModule(cell.x, cell.y, grid.size),
+    ).length
+    expect(tree.branches.length).toBeLessThanOrEqual(canopyModules * 6 + 80)
+  })
+
+  it('fills every corner with a grass carpet and a lush standing tuft', () => {
+    expect(tree.finderCarpet).toHaveLength(tree.lawns.length * 13)
+    expect(tree.finderGrass.length).toBeGreaterThan(tree.lawns.length * 20)
+    const again = buildTree(grid, hashString(grid.payload))
+    expect(again.finderCarpet[0]).toEqual(tree.finderCarpet[0])
+    expect(again.finderGrass[0]).toEqual(tree.finderGrass[0])
+    for (const blade of tree.finderGrass) {
+      expect(blade.height).toBeLessThanOrEqual(BLADE_H)
+      expect(blade.lean).toBeGreaterThanOrEqual(0)
+      expect(blade.lean).toBeLessThanOrEqual(BLADE_LEAN)
+      expect(Math.hypot(blade.root[0] - blade.cell[0], blade.root[2] - blade.cell[1])).toBeLessThanOrEqual(BLADE_ROOT + 1e-9)
+    }
+    for (const leaf of tree.finderCarpet) {
+      expect(Math.abs(leaf.position[0] - leaf.cell[0])).toBeLessThan(0.5)
+      expect(Math.abs(leaf.position[2] - leaf.cell[1])).toBeLessThan(0.5)
+      expect(leaf.scale).toBeGreaterThan(0)
     }
   })
 
-  it('roots a clump of leaning blades in every turf mound, tips over their own module', () => {
-    const blades = tree.leaves.filter((l) => l.kind === 'blade')
-    expect(blades.length).toBeGreaterThan(tree.lawns.length * 9)
-    for (const blade of blades) {
-      expect(blade.scale).toBeLessThanOrEqual(BLADE_H)
-      expect(blade.euler[0]).toBeGreaterThanOrEqual(0)
-      expect(blade.euler[0]).toBeLessThanOrEqual(BLADE_LEAN)
-      // The tip is the base plus the full length along the leaning up-vector;
-      // it must not reach past the neighbouring module's rim.
-      const tipX = blade.anchor[0] + Math.sin(blade.euler[0]) * Math.sin(blade.euler[1]) * blade.scale
-      const tipZ = blade.anchor[2] + Math.sin(blade.euler[0]) * Math.cos(blade.euler[1]) * blade.scale
-      // Width included (0.22 at scale 1, so 0.11 either side of the tip).
-      expect(Math.abs(tipX - blade.cell[0]) + 0.11 * blade.scale).toBeLessThanOrEqual(0.5)
-      expect(Math.abs(tipZ - blade.cell[1]) + 0.11 * blade.scale).toBeLessThanOrEqual(0.5)
-      expect(Math.hypot(blade.anchor[0] - blade.cell[0], blade.anchor[2] - blade.cell[1])).toBeLessThanOrEqual(BLADE_ROOT + 1e-9)
+  it('rounds the crown with deterministic ink-free filler', () => {
+    const canopyModules = grid.cells.filter(
+      (cell) => cell.dark && !isCornerModule(cell.x, cell.y, grid.size),
+    ).length
+    // Thick vertical stacks on each dark module, still bounded.
+    expect(tree.filler.length).toBeGreaterThan(canopyModules * 12)
+    expect(tree.filler.length).toBeLessThanOrEqual(canopyModules * 70 + tree.branches.length * 3 + 16)
+    const again = buildTree(grid, hashString(grid.payload))
+    expect(again.filler.length).toBe(tree.filler.length)
+    expect(again.filler[0]).toEqual(tree.filler[0])
+    expect(tree.habit).toBe('lush')
+    for (const leaf of tree.filler) {
+      expect(leaf.position[1]).toBeGreaterThan(SLAB_H)
+      expect(leaf.position[1] + leaf.scale * 0.5).toBeLessThanOrEqual(tree.crownTop + 1e-9)
+      expect(leaf.scale).toBeGreaterThan(0)
+      expect(leaf.shade).toBeGreaterThanOrEqual(0.74)
+      expect(leaf.shade).toBeLessThanOrEqual(1.22)
+      expect(leaf.ink).toBeGreaterThan(0)
+      expect(leaf.ink).toBeLessThan(0.6)
+      const mx = Math.round(leaf.position[0] + half)
+      const my = Math.round(leaf.position[2] + half)
+      expect(isDark(mx, my)).toBe(true)
+    }
+  })
+
+  it('keeps the previous sparse habit thinner and still on dark modules', () => {
+    const canopyModules = grid.cells.filter(
+      (cell) => cell.dark && !isCornerModule(cell.x, cell.y, grid.size),
+    ).length
+    const sparse = buildTree(grid, hashString(grid.payload), { habit: 'sparse' })
+    expect(sparse.habit).toBe('sparse')
+    expect(sparse.species).toBe(tree.species)
+    expect(sparse.leaves).toHaveLength(tree.leaves.length)
+    expect(sparse.filler.length).toBeGreaterThan(canopyModules)
+    expect(sparse.filler.length).toBeLessThan(tree.filler.length)
+    for (const leaf of sparse.filler) {
+      const mx = Math.round(leaf.position[0] + half)
+      const my = Math.round(leaf.position[2] + half)
+      expect(isDark(mx, my)).toBe(true)
     }
   })
 
@@ -140,11 +205,28 @@ describe('buildTree', () => {
     const tips = new Set<string>()
     for (const b of tree.branches) for (const e of endpoints(b)) tips.add(e.map((v) => v.toFixed(3)).join(','))
     for (const leaf of tree.leaves) {
-      if (leaf.kind !== 'leaf') continue
       const a = leaf.anchor
       expect(tips.has(a.map((v) => v.toFixed(3)).join(','))).toBe(true)
       const d = Math.hypot(leaf.position[0] - a[0], leaf.position[1] - a[1], leaf.position[2] - a[2])
       expect(d).toBeLessThanOrEqual(REACH)
     }
+  })
+
+  it.each([
+    ['version 2', 'http://example.com/', 2, 500],
+    ['version 10', `https://example.com/${'p'.repeat(180)}`, 10, 2500],
+  ])('keeps %s generation and instance counts within budget', (_label, payload, version, budgetMs) => {
+    const fixture = encodeGrid(payload)
+    const start = performance.now()
+    const result = buildTree(fixture, hashString(payload))
+    const elapsed = performance.now() - start
+    const canopyModules = fixture.cells.filter(
+      (cell) => cell.dark && !isCornerModule(cell.x, cell.y, fixture.size),
+    ).length
+
+    expect(fixture.version).toBe(version)
+    expect(elapsed).toBeLessThan(budgetMs)
+    expect(result.leaves).toHaveLength(canopyModules * 13)
+    expect(result.branches.length).toBeLessThanOrEqual(canopyModules * 6 + 80)
   })
 })

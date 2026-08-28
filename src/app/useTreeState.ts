@@ -14,6 +14,7 @@ import { easeInOutCubic, isOverhead, OVERHEAD, SEASON_MS, squareYaw } from '../s
 import type { SceneState } from '../scene/sceneState'
 import { VIEW_PITCH, VIEW_YAW } from '../scene/tree'
 import { buildShareSearch, parseShareParams } from '../share/params'
+import type { TreeVariety } from '../scene/treeSpecies'
 
 function detectWebgl(): boolean {
   try {
@@ -34,6 +35,7 @@ export function useTreeState() {
   const [url, setUrl] = useState(startUrl)
   const [season, setSeason] = useState<Season>(initial.season)
   const [palette, setPalette] = useState<PaletteId>(initial.palette)
+  const [variety, setVariety] = useState<TreeVariety | 'auto'>(initial.variety)
   const [muted, setMuted] = useState(true)
   /** The camera is straight down: the canopy reads as the code. */
   const [overhead, setOverhead] = useState(false)
@@ -78,12 +80,12 @@ export function useTreeState() {
   }, [url])
 
   useEffect(() => {
-    const search = buildShareSearch({ url, season, palette })
+    const search = buildShareSearch({ url, season, palette, variety })
     const next = `${window.location.pathname}${search}`
     if (`${window.location.pathname}${window.location.search}` !== next) {
       history.replaceState(null, '', next)
     }
-  }, [url, season, palette])
+  }, [url, season, palette, variety])
 
   useEffect(() => {
     const target = colorsOf(season, palette)
@@ -136,6 +138,8 @@ export function useTreeState() {
     setSeason,
     palette,
     setPalette,
+    variety,
+    setVariety,
     muted,
     toggleMuted,
     overhead,

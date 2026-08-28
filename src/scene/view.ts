@@ -16,9 +16,9 @@ export function smoothstep(edge0: number, edge1: number, x: number): number {
 }
 
 /**
- * Weather, ground litter and the rim grass are scenery around the code, not
- * part of it; on the way to overhead they thin out so the quiet zone and the
- * light modules stay clean. Nothing that carries ink is touched.
+ * Weather (rain, petals, falling leaves) is not part of the code. It thins
+ * out on the way to overhead so the scan is not a snow of particles. Grass,
+ * leaves and the lawn stay put — the QR is formed by the camera angle.
  */
 export function sceneryOpacity(pitch: number): number {
   return 1 - smoothstep(1.2, 1.48, pitch)
