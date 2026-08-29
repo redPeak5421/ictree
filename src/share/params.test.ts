@@ -42,4 +42,16 @@ describe('share params', () => {
       mode: 'reveal',
     })
   })
+
+  it('round-trips a plain-text payload without adding a scheme', () => {
+    const search = buildShareSearch({
+      url: '你好',
+      season: 'autumn',
+      palette: 'default',
+      locked: false,
+      mode: 'create',
+    })
+    expect(search).toContain('u=%E4%BD%A0%E5%A5%BD')
+    expect(parseShareParams(search).url).toBe('你好')
+  })
 })

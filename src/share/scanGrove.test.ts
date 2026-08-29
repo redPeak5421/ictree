@@ -15,4 +15,8 @@ describe('scanGrovePayload', () => {
     const grid = encodeGrid(payload)
     expect(scanGrovePayload(grid, colorsOf('spring', 'default'))).toBe(payload)
   })
+
+  it('reads a plain-text greeting', () => {
+    expect(scanGrovePayload(encodeGrid('你好'), colorsOf('autumn', 'default'))).toBe('你好')
+  })
 })

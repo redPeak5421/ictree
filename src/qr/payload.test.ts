@@ -13,8 +13,16 @@ describe('normalizePayload', () => {
     expect(normalizePayload('   ')).toBe(DEFAULT_PAYLOAD)
   })
 
-  it('prepends https:// when the scheme is missing', () => {
+  it('prepends https:// only when the text looks like a host', () => {
     expect(normalizePayload('example.com')).toBe('https://example.com')
+    expect(normalizePayload('www.example.com/a')).toBe('https://www.example.com/a')
+    expect(normalizePayload('localhost:3000')).toBe('https://localhost:3000')
+  })
+
+  it('keeps plain text so a shared 你好 is not rewritten as a URL', () => {
+    expect(normalizePayload('你好')).toBe('你好')
+    expect(normalizePayload('hello')).toBe('hello')
+    expect(normalizePayload('hello world')).toBe('hello world')
   })
 
   it('keeps an explicit http URL', () => {

@@ -35,7 +35,7 @@ URL / password  →  wrapSecret?  →  encodeGrid (uqr, ECC M)
 ```
 
 1. `src/main.tsx` mounts `App`. `useTreeState` boots from `parseShareParams(location.search)`.
-2. **Create** (200 ms debounce): `payloadError` → `normalizePayload` → optional `wrapSecret` → `encodeGrid`.
+2. **Create** (200 ms debounce): `payloadError` → `normalizePayload` (https only for hosts, not plain text) → optional `wrapSecret` → `encodeGrid`.
 3. **Reveal** re-encodes `payload`. `RevealPanel` calls `scanGrovePayload` (flat mosaic, not the WebGL canvas), then `unwrapSecret` if locked.
 4. `TreeCanvas` uses `resolveTreeChoice(payload, palette)` → `buildTree`. Leaves and filler stay on **dark modules only**. Finder ink is grass, luma-pinned.
 5. Animated camera/colors live on `scene.current` (`src/scene/sceneState.ts`) and are read in `useFrame`. React holds URL, password, payload, grid, mode, season, palette, error.
