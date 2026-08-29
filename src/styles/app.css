@@ -53,24 +53,22 @@ body,
   pointer-events: none;
 }
 
-/* The hint belongs to the canvas it explains, so it floats over the stage
-   instead of taking a row of the bench below. */
+/* Camera hint sits on the bench under the tree row so it never covers
+   the grove. Still a button: tap toggles overhead the same as the canvas. */
 .hint-pill {
-  position: absolute;
-  left: 50%;
-  bottom: 10px;
-  z-index: 2;
-  transform: translateX(-50%);
+  align-self: center;
   border: 0;
-  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  background: transparent;
   color: var(--muted);
   border-radius: var(--radius-pill);
-  padding: 6px 14px;
+  padding: 4px 10px;
   font: 12.5px/1.2 var(--font);
   cursor: pointer;
   white-space: nowrap;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+}
+
+.hint-pill:hover {
+  color: var(--ink);
 }
 
 /* ---------- bench ---------- */
@@ -268,9 +266,7 @@ body,
 }
 
 .share-menu {
-  position: absolute;
-  right: 0;
-  bottom: 44px;
+  position: fixed;
   min-width: 168px;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -279,7 +275,7 @@ body,
   padding: 6px;
   display: flex;
   flex-direction: column;
-  z-index: 3;
+  z-index: 20;
 }
 
 .share-menu button,
@@ -503,10 +499,6 @@ a:focus-visible {
     gap: 12px;
     border-left: 1px solid var(--line);
     background: color-mix(in srgb, var(--panel) 45%, var(--bg));
-  }
-
-  .hint-pill {
-    bottom: 22px;
   }
 
   .tree-chip {

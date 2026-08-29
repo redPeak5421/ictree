@@ -135,8 +135,6 @@ export const VIEW_PITCH = 0.38
  * carries no reserved colour plates — from the side there is a tree and
  * four patches of grass, and only straight down is there a code.
  */
-export const MOUND_R = 0.56
-export const MOUND_H = 0.24
 export {
   FINDER_BLADE_HEIGHT as BLADE_H,
   FINDER_BLADE_LEAN as BLADE_LEAN,

@@ -43,9 +43,9 @@ function SceneryGroup({
     const inst = mesh.current
     if (!inst) return
     const { colors, pitch } = scene.current
-    // Rim clumps and trunk-foot rosettes live in the code's quiet zone and on
-    // its light modules. A decoder's block threshold turns even a pale tuft
-    // into ink, so like the weather they fade out on the way overhead.
+    // Rim clumps sit on the island lip. Trunk rosettes can land on light
+    // modules. Either way a pale tuft becomes ink to a decoder, so they fade
+    // on the way overhead like the weather.
     const opacity = sceneryOpacity(pitch)
     const mat = material.current
     if (mat) {
@@ -85,6 +85,8 @@ function SceneryGroup({
       if (inst.instanceColor) inst.instanceColor.needsUpdate = true
     }
   })
+
+  if (items.length === 0) return null
 
   return (
     <instancedMesh

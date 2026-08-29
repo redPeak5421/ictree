@@ -59,22 +59,20 @@ export function cameraPose(
   const cosY = Math.cos(yaw)
   // Half-extent of the island square along either screen axis at this heading.
   const hx = (island / 2) * (Math.abs(cosY) + Math.abs(sinY))
-  const crownR = island * 0.55
   // Overhead, a decoder wants two clear modules around the code.
-  const halfW = Math.max(hx, crownR, (qrSpan + 4) / 2)
-  // On screen a point's height is y*cos(elev) + depth*sin(elev): the slab's
-  // near edge and underside set the bottom. The top is the crown's highest
-  // projected point, taken as an ellipsoid from the trunk top to crownTop and
-  // as wide as the island — from a shallow angle its apex, but up high the far
-  // rim rises past the apex and framing the apex alone would cut the crown.
-  const bottom = -hx * sinE - SLAB_H * cosE
-  const crownMid = (crownTop + island * 0.22) / 2
-  const crownH = crownTop - crownMid
-  const top = Math.max(crownMid * cosE + Math.hypot(crownH * cosE, crownR * sinE) + 1, hx * sinE)
+  const halfW = Math.max(hx, (qrSpan + 4) / 2)
+  // On screen a point's height is y*cos(elev) + depth*sin(elev). The slab's
+  // near edge and underside set the bottom; the crown apex above the trunk
+  // plus a modest foliage radius set the top. A wide crown ellipsoid used
+  // to sit the look-at above the island, so the grove hugged the bottom.
+  const bottom = -halfW * sinE - SLAB_H * cosE
+  const apex = crownTop * cosE
+  const foliageR = island * 0.32
+  const top = Math.max(apex + foliageR * sinE, halfW * sinE)
   // Screen-up in world space is exactly perpendicular to the view direction,
   // so lookAt keeps it and the view stays continuous through straight down.
   const up: [number, number, number] = [-sinE * sinY, cosE, -sinE * cosY]
-  const mid = (top + bottom) / 2
+  const mid = (Math.max(apex, halfW * sinE) + bottom) / 2
   const target: [number, number, number] = [up[0] * mid, up[1] * mid, up[2] * mid]
   const dist = island * 2.3
   return {
@@ -82,7 +80,7 @@ export function cameraPose(
     target,
     up,
     spanX: 2 * halfW * MARGIN,
-    spanY: (top - bottom) * MARGIN,
+    spanY: 2 * Math.max(top - mid, mid - bottom) * MARGIN,
   }
 }
 

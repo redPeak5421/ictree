@@ -52,7 +52,6 @@ export function App() {
         ) : (
           <QrFallback grid={state.grid} colors={state.colors} />
         )}
-        {state.webgl && <HintPill overhead={state.overhead} onToggle={state.toggleView} />}
       </div>
       <footer className="chrome">
         <div className="top-row">
@@ -83,6 +82,7 @@ export function App() {
         )}
         <SeasonBar season={state.season} onChange={state.setSeason} />
         <TreeRow tree={state.tree} season={state.season} onChange={state.setTree} />
+        {state.webgl && <HintPill overhead={state.overhead} onToggle={state.toggleView} />}
       </footer>
     </div>
   )

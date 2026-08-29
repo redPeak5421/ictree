@@ -21,6 +21,11 @@ describe('cameraPose', () => {
       expect(Math.abs(pose.position[0] - pose.target[0])).toBeLessThan(1e-9)
       expect(Math.abs(pose.position[2] - pose.target[2])).toBeLessThan(1e-9)
       expect(pose.position[1]).toBeGreaterThan(pose.target[1])
+      // The island centre stays in the middle of the frame. A look-at above
+      // the paving used to shove the code onto the bottom edge.
+      expect(pose.target[0]).toBeCloseTo(0, 6)
+      expect(pose.target[1]).toBeCloseTo(0, 6)
+      expect(pose.target[2]).toBeCloseTo(0, 6)
       // Quiet zone: at least two modules of margin around the code.
       expect(pose.spanX).toBeGreaterThanOrEqual(36)
       expect(pose.spanY).toBeGreaterThanOrEqual(36)
