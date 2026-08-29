@@ -1,7 +1,8 @@
 import { ISLAND_RIM, type ModuleGrid } from '../qr/types'
 import { hashString, mulberry32 } from './hash'
 import { fitScale, qrSlots, type Bounds, type Point2 } from './leafShape'
-import { isCornerCell, speciesForPayload, type TreeSpecies } from './treeSpecies'
+import type { GroundCover } from './palettes'
+import { isCornerCell, type TreeSpecies } from './treeSpecies'
 
 export type VegetationRegion = 'rim' | 'turf' | 'trunk' | 'finder'
 export type VegetationForm = 'blade' | 'broad' | 'seed'
@@ -19,6 +20,8 @@ export interface VegetationInstance {
   lean: number
   tone: number
   phase: number
+  /** Side-view wind weight. Overhead footprint ignores this. */
+  gust: number
 }
 
 export interface FinderVegetationInstance extends VegetationInstance {
@@ -54,8 +57,8 @@ export interface GroundLitterInstance {
   shape: TreeSpecies
 }
 
-export const FINDER_BLADE_HEIGHT = 1.45
-export const FINDER_BLADE_LEAN = 0.62
+export const FINDER_BLADE_HEIGHT = 1.75
+export const FINDER_BLADE_LEAN = 0.42
 export const FINDER_ROOT_RADIUS = 0.42
 export const FINDER_CARPET_SLOTS = 13
 /** Dark-neighbour bleed, matching the canopy's SEAM_OVERLAP. */
@@ -117,9 +120,12 @@ export function vegetationOutline(form: Exclude<VegetationForm, 'seed'>): readon
   ]
 }
 
-function rimForm(index: number): VegetationForm {
+function rimForm(index: number, cover: GroundCover): VegetationForm {
   const turn = index % 10
-  return turn < 5 ? 'blade' : turn < 8 ? 'broad' : 'seed'
+  const base: VegetationForm = turn < 5 ? 'blade' : turn < 8 ? 'broad' : 'seed'
+  if (cover === 'meadow') return base
+  if (cover === 'flower') return base === 'blade' && turn % 2 === 0 ? 'broad' : base
+  return base === 'blade' && turn % 2 === 0 ? 'seed' : base
 }
 
 function rimHeight(index: number, rng: () => number): number {
@@ -129,7 +135,7 @@ function rimHeight(index: number, rng: () => number): number {
     case 1:
       return 0.48 + rng() * 0.34
     default:
-      return 0.88 + rng() * 0.37
+      return 0.92 + rng() * 0.4
   }
 }
 
@@ -169,7 +175,11 @@ function insideBounds(x: number, z: number, halfW: number, bounds: Bounds): bool
  * sits on a light QR module — the code is formed by camera angle, not by
  * hiding a second layer.
  */
-export function buildSceneryVegetation(grid: ModuleGrid, seed: number): VegetationInstance[] {
+export function buildSceneryVegetation(
+  grid: ModuleGrid,
+  seed: number,
+  cover: GroundCover = 'meadow',
+): VegetationInstance[] {
   const rng = mulberry32((seed ^ hashString('scenery-vegetation')) >>> 0)
   const island = grid.size + ISLAND_RIM * 2
   const origin = -(island - 1) / 2
@@ -212,6 +222,7 @@ export function buildSceneryVegetation(grid: ModuleGrid, seed: number): Vegetati
           lean: 0.12 + rng() * 0.4,
           tone: Math.floor(rng() * 4),
           phase: rng() * Math.PI * 2,
+          gust: islandCorner ? 1.75 : 1.15,
         })
       }
 
@@ -219,7 +230,7 @@ export function buildSceneryVegetation(grid: ModuleGrid, seed: number): Vegetati
       const large = islandCorner || rng() < 0.42
       const count = (large ? 24 + Math.floor(rng() * 10) : 14 + Math.floor(rng() * 7)) + (islandCorner ? 12 : 0)
       for (let itemIndex = 0; itemIndex < count; itemIndex++) {
-        const form = rimForm(itemIndex + cellIndex)
+        const form = rimForm(itemIndex + cellIndex, cover)
         const radius = Math.sqrt(rng()) * (islandCorner ? 0.5 : 0.44)
         const angle = rng() * Math.PI * 2
         const [x, z] = lip(cx + Math.cos(angle) * radius, cz + Math.sin(angle) * radius)
@@ -235,6 +246,7 @@ export function buildSceneryVegetation(grid: ModuleGrid, seed: number): Vegetati
           lean: 0.08 + rng() * (form === 'broad' ? 0.68 : 0.5),
           tone: Math.floor(rng() * 4),
           phase: rng() * Math.PI * 2,
+          gust: islandCorner ? 1.9 : 1.4,
         })
       }
     }
@@ -262,6 +274,7 @@ export function buildSceneryVegetation(grid: ModuleGrid, seed: number): Vegetati
         lean: 1.05 + rng() * 0.37,
         tone: Math.floor(rng() * 4),
         phase: rng() * Math.PI * 2,
+        gust: 0.55,
       })
     }
   }
@@ -272,7 +285,7 @@ export function buildSceneryVegetation(grid: ModuleGrid, seed: number): Vegetati
 /** Species-matching fallen leaves gathered in irregular patches under the drip line. */
 export function buildGroundLitter(grid: ModuleGrid, seed: number, species?: TreeSpecies): GroundLitterInstance[] {
   const rng = mulberry32((seed ^ hashString('ground-litter')) >>> 0)
-  const shape = species ?? speciesForPayload(grid.payload)
+  const shape = species ?? 'cherry'
   const count = 44 + Math.floor(rng() * 7)
   const clusterCount = 4 + Math.floor(rng() * 3)
   const clusteredCount = Math.floor(count * 0.82)
@@ -358,8 +371,8 @@ export function buildFinderCarpet(grid: ModuleGrid, seed: number): FinderCarpetI
 
 /**
  * Standing tufts rooted in the dark corner modules. A short lawn band plus
- * taller blades, so the corner is a clump of grass rather than stalks on a
- * pad. Tips stay inside neighbour-aware ink bounds.
+ * taller, more vertical blades so the side view is a hedge, while the
+ * overhead footprint stays inside neighbour-aware ink bounds.
  */
 export function buildFinderVegetation(grid: ModuleGrid, seed: number): FinderVegetationInstance[] {
   const rng = mulberry32((seed ^ hashString('finder-vegetation')) >>> 0)
@@ -392,11 +405,15 @@ export function buildFinderVegetation(grid: ModuleGrid, seed: number): FinderVeg
           ? 0.14 + rng() * 0.1
           : 0.12 + rng() * 0.12
       const height = form === 'broad'
-        ? 0.36 + rng() * 0.5
+        ? 0.42 + rng() * 0.55
         : lawn
           ? 0.16 + rng() * 0.26
-          : 0.55 + rng() * 0.9
-      const lean = form === 'broad' ? 0.16 + rng() * 0.36 : lawn ? 0.18 + rng() * 0.36 : 0.08 + rng() * 0.54
+          : 0.72 + rng() * (FINDER_BLADE_HEIGHT - 0.72)
+      const lean = form === 'broad'
+        ? 0.12 + rng() * 0.26
+        : lawn
+          ? 0.16 + rng() * 0.22
+          : 0.06 + rng() * (FINDER_BLADE_LEAN - 0.06)
       const heading = rng() * Math.PI * 2
       const root: [number, number, number] = [
         cx + Math.cos(angle) * radius,
@@ -422,6 +439,7 @@ export function buildFinderVegetation(grid: ModuleGrid, seed: number): FinderVeg
         lean,
         tone,
         phase,
+        gust: 0,
         ink: FINDER_INK,
       })
       placed++
@@ -441,6 +459,7 @@ export function buildFinderVegetation(grid: ModuleGrid, seed: number): FinderVeg
           lean,
           tone,
           phase,
+          gust: 0,
           ink: FINDER_INK,
         })
         placed++

@@ -2,18 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { buildShareSearch, parseShareParams } from './params'
 
 describe('share params', () => {
-  it('round-trips url, season, and palette', () => {
+  it('round-trips url, season, palette, lock, and mode', () => {
     const search = buildShareSearch({
       url: 'https://example.com/a b',
       season: 'spring',
       palette: 'coral',
-      variety: 'maple',
+      locked: true,
+      mode: 'reveal',
     })
     expect(parseShareParams(search)).toEqual({
       url: 'https://example.com/a b',
       season: 'spring',
       palette: 'coral',
-      variety: 'maple',
+      locked: true,
+      mode: 'reveal',
     })
   })
 
@@ -22,19 +24,22 @@ describe('share params', () => {
       url: '',
       season: 'autumn',
       palette: 'default',
-      variety: 'auto',
+      locked: false,
+      mode: 'create',
     })
     expect(parseShareParams('?s=winter&p=neon&u=ok&t=willow')).toEqual({
       url: 'ok',
       season: 'autumn',
       palette: 'default',
-      variety: 'auto',
+      locked: false,
+      mode: 'create',
     })
-    expect(parseShareParams('?t=sparse')).toEqual({
-      url: '',
-      season: 'autumn',
+    expect(parseShareParams('?u=gv1.abc&s=summer')).toEqual({
+      url: 'gv1.abc',
+      season: 'summer',
       palette: 'default',
-      variety: 'sparse',
+      locked: true,
+      mode: 'reveal',
     })
   })
 })

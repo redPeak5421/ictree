@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@react-three/fiber": "^9.7.0",
+    "gifenc": "^1.0.3",
+    "jsqr": "^1.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "three": "^0.185.1",
@@ -21,7 +23,6 @@
     "@types/react-dom": "^19.2.5",
     "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^4.7.0",
-    "jsqr": "^1.4.0",
     "typescript": "^7.0.2",
     "vite": "^6.4.3",
     "vitest": "^4.1.11"

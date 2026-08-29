@@ -9,13 +9,13 @@ import {
 } from './grassLayout'
 import { hashString } from './hash'
 import { vegetationTexture } from './leafTexture'
-import { mixHex, type SceneColors } from './palettes'
+import { groundCoverOf, mixHex, type PaletteId, type SceneColors, type Season } from './palettes'
 import type { SceneRef } from './sceneState'
 
 function vegetationColor(form: VegetationForm, tone: number, colors: SceneColors): string {
   const amount = tone / 3
-  if (form === 'broad') return mixHex(colors.grass, colors.grassTip, 0.12 + amount * 0.58)
-  if (form === 'seed') return mixHex(colors.grassTip, colors.accent, 0.1 + amount * 0.16)
+  if (form === 'broad') return mixHex(colors.accent, colors.grassTip, 0.18 + amount * 0.35)
+  if (form === 'seed') return mixHex(colors.grassTip, colors.accent, 0.08 + amount * 0.22)
   return mixHex(colors.grass, colors.grassTip, amount * 0.9)
 }
 
@@ -42,9 +42,10 @@ function SceneryGroup({
     const { colors } = scene.current
 
     const t = reduced ? 0 : clock.elapsedTime
-    const swayScale = form === 'broad' ? 0.035 : form === 'seed' ? 0.09 : 0.07
+    const swayScale = form === 'broad' ? 0.05 : form === 'seed' ? 0.13 : 0.1
     items.forEach((item, index) => {
-      const sway = reduced ? 0 : Math.sin(t * 1.4 + item.phase) * swayScale
+      const gust = item.gust ?? (item.region === 'rim' ? 1.3 : 1)
+      const sway = reduced ? 0 : Math.sin(t * 1.55 + item.phase) * swayScale * gust
       const lean = item.lean + sway
       const ux = Math.sin(lean) * Math.sin(item.heading)
       const uy = Math.cos(lean)
@@ -89,10 +90,23 @@ function SceneryGroup({
  * Decorative rim clumps and trunk-base rosettes. The pure generator supplies
  * the gaps, height bands and plant forms; this component only animates them.
  */
-export function Grass({ grid, scene, reduced }: { grid: ModuleGrid; scene: SceneRef; reduced: boolean }) {
+export function Grass({
+  grid,
+  scene,
+  reduced,
+  season,
+  palette,
+}: {
+  grid: ModuleGrid
+  scene: SceneRef
+  reduced: boolean
+  season: Season
+  palette: PaletteId
+}) {
+  const cover = groundCoverOf(season, palette)
   const vegetation = useMemo(
-    () => buildSceneryVegetation(grid, hashString(grid.payload)),
-    [grid],
+    () => buildSceneryVegetation(grid, hashString(grid.payload), cover),
+    [grid, cover],
   )
   const groups = useMemo(() => ({
     blade: vegetation.filter((item) => item.form === 'blade'),

@@ -154,9 +154,30 @@ describe('grass layout', () => {
   })
 
 
+  it('keeps meadow form mix and adds windier rim plants, flowers, and dandelions', () => {
+    const rim = scenery.filter((item) => item.region === 'rim')
+    expect(rim.every((item) => item.gust >= 1.4)).toBe(true)
+    expect(scenery.filter((item) => item.region === 'turf' && item.gust >= 1.15).length).toBeGreaterThan(0)
+    const flower = buildSceneryVegetation(grid, seed, 'flower').filter((item) => item.region === 'rim')
+    const puff = buildSceneryVegetation(grid, seed, 'dandelion').filter((item) => item.region === 'rim')
+    expect(ratio(flower, (item) => item.form === 'broad')).toBeGreaterThan(ratio(rim, (item) => item.form === 'broad'))
+    expect(ratio(puff, (item) => item.form === 'seed')).toBeGreaterThan(ratio(rim, (item) => item.form === 'seed'))
+    expect(ratio(flower, (item) => item.form === 'blade')).toBeGreaterThan(0)
+    expect(ratio(puff, (item) => item.form === 'blade')).toBeGreaterThan(0)
+  })
+
+  it('stands finder blades taller and more vertical than the lawn band', () => {
+    const finder = buildFinderVegetation(grid, seed)
+    const tall = finder.filter((item) => item.form === 'blade' && item.height > 0.7)
+    expect(tall.length).toBeGreaterThan(0)
+    expect(Math.max(...finder.map((item) => item.height))).toBeLessThanOrEqual(1.75)
+    expect(Math.max(...finder.map((item) => item.lean))).toBeLessThanOrEqual(0.42)
+    expect(tall.every((item) => item.lean <= 0.42)).toBe(true)
+  })
+
   it('clusters species-matching fallen leaves around the tree without crossing the paving', () => {
-    const litter = buildGroundLitter(grid, seed)
-    expect(buildGroundLitter(grid, seed)).toEqual(litter)
+    const litter = buildGroundLitter(grid, seed, 'maple')
+    expect(buildGroundLitter(grid, seed, 'maple')).toEqual(litter)
     expect(litter.length).toBeGreaterThanOrEqual(40)
     expect(litter.length).toBeLessThanOrEqual(52)
     expect(new Set(litter.filter((item) => item.cluster !== null).map((item) => item.cluster)).size).toBeGreaterThanOrEqual(4)

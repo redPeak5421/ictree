@@ -3,7 +3,7 @@ import { toLumaHex } from '../qr/contrast'
 import type { ModuleGrid } from '../qr/types'
 import { silhouette, type Point2 } from './leafShape'
 import { carpetOutline, vegetationOutline, type FinderCarpetInstance, type FinderVegetationInstance } from './grassLayout'
-import { foliageTones, hexRgb, mixHex, type SceneColors } from './palettes'
+import { finderInkTones, foliageTones, hexRgb, type SceneColors } from './palettes'
 import { type LeafInstance, type TreeRig } from './tree'
 
 export interface ProjectionOptions {
@@ -122,12 +122,7 @@ export function rasterTreeProjection(
   const half = (grid.size - 1) / 2
   const toPixel = (value: number) => (value + half + options.quiet + 0.5) * options.modulePx
 
-  const grassTones = [
-    options.colors.grass,
-    mixHex(options.colors.grass, options.colors.grassTip, 0.35),
-    mixHex(options.colors.grass, options.colors.grassTip, 0.7),
-    options.colors.grassTip,
-  ]
+  const grassTones = finderInkTones(options.colors)
   const paintPolygon = (world: readonly Point2[], rgb: readonly number[]) => {
     const polygon = world.map(([x, z]) => [toPixel(x), toPixel(z)] as const)
     const xs = polygon.map(([x]) => x)

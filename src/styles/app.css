@@ -163,10 +163,29 @@ body,
   gap: 6px;
 }
 
-.variety-bar {
+.mode-bar {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
+}
+
+.reveal-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reveal-link {
+  color: var(--ink);
+  font: 14px/1.4 var(--font);
+  word-break: break-all;
+}
+
+.reveal-note {
+  flex: 1;
+  margin: 0;
+  color: var(--muted);
+  font: 13px/1.4 var(--font);
 }
 
 .season-btn {

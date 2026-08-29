@@ -1,32 +1,38 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ModuleGrid } from '../qr/types'
-import type { PaletteId, SceneColors, Season } from '../scene/palettes'
-import type { TreeVariety } from '../scene/treeSpecies'
+import type { SceneColors } from '../scene/palettes'
+import type { SceneRef } from '../scene/sceneState'
+import { downloadLoopGif } from '../share/exportLoop'
 import { downloadQrPng } from '../share/exportPng'
-import { shareUrl } from '../share/params'
+import { downloadStillPng, STILL_NO_CANVAS } from '../share/exportStill'
+import { readStillFile, STILL_ERROR } from '../share/importStill'
+import { shareUrl, type ShareState } from '../share/params'
 import { ShareIcon } from './icons'
 
 export function ShareMenu({
-  url,
-  season,
-  palette,
-  variety,
+  state,
   grid,
   colors,
+  scene,
+  onApplyStill,
 }: {
-  url: string
-  season: Season
-  palette: PaletteId
-  variety: TreeVariety | 'auto'
+  state: ShareState
   grid: ModuleGrid
   colors: SceneColors
+  scene: SceneRef
+  onApplyStill: (state: ShareState) => void
 }) {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [stillNote, setStillNote] = useState<string | null>(null)
   const root = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setStillNote(null)
+      return
+    }
     const onDoc = (event: MouseEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false)
     }
@@ -41,7 +47,7 @@ export function ShareMenu({
     }
   }, [open])
 
-  const link = shareUrl(window.location.origin, window.location.pathname, { url, season, palette, variety })
+  const link = shareUrl(window.location.origin, window.location.pathname, state)
 
   const copy = async () => {
     try {
@@ -51,6 +57,22 @@ export function ShareMenu({
     }
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1200)
+  }
+
+  const failStill = (err: unknown) => {
+    setStillNote(err instanceof Error ? err.message : STILL_NO_CANVAS)
+  }
+
+  const openStill = async (file: File | undefined) => {
+    if (fileRef.current) fileRef.current.value = ''
+    if (!file) return
+    try {
+      onApplyStill(await readStillFile(file))
+      setOpen(false)
+    } catch (err) {
+      setStillNote(err instanceof Error ? err.message : STILL_ERROR)
+      setOpen(true)
+    }
   }
 
   return (
@@ -65,6 +87,13 @@ export function ShareMenu({
       >
         <ShareIcon />
       </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/gif,image/png,image/jpeg,image/webp"
+        hidden
+        onChange={(event) => void openStill(event.target.files?.[0])}
+      />
       {open && (
         <div className="share-menu" role="menu">
           <button type="button" role="menuitem" onClick={() => void copy()}>
@@ -79,6 +108,27 @@ export function ShareMenu({
             }}
           >
             Download QR
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              void downloadStillPng(state).then(() => setOpen(false)).catch(failStill)
+            }}
+          >
+            Save Still
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              void downloadLoopGif(state, scene).then(() => setOpen(false)).catch(failStill)
+            }}
+          >
+            Save Loop
+          </button>
+          <button type="button" role="menuitem" onClick={() => fileRef.current?.click()}>
+            Open Still
           </button>
           <a
             role="menuitem"
@@ -104,6 +154,7 @@ export function ShareMenu({
           >
             WhatsApp
           </a>
+          {stillNote && <p className="error">{stillNote}</p>}
         </div>
       )}
     </div>

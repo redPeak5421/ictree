@@ -1,3 +1,4 @@
+import type { PaletteId } from './palettes'
 import { ISLAND_RIM, type ModuleCell, type ModuleGrid } from '../qr/types'
 import { hashString, mulberry32 } from './hash'
 
@@ -34,35 +35,22 @@ export function isCornerCell(x: number, y: number, size: number): boolean {
   return near(x) && near(y)
 }
 
-const SPECIES: readonly TreeSpecies[] = ['oak', 'maple', 'cherry']
-
-/** A picker choice. `sparse` is the previous open crown on the payload species. */
-export const TREE_VARIETIES = ['oak', 'maple', 'cherry', 'sparse'] as const
-export type TreeVariety = (typeof TREE_VARIETIES)[number]
 export type TreeHabit = 'lush' | 'sparse'
 
-export function speciesForPayload(payload: string): TreeSpecies {
-  return SPECIES[hashString(payload) % SPECIES.length]!
-}
-
-export function parseVariety(raw: string | null | undefined): TreeVariety | 'auto' {
-  return raw && (TREE_VARIETIES as readonly string[]).includes(raw) ? (raw as TreeVariety) : 'auto'
+export function speciesForPalette(palette: PaletteId): TreeSpecies {
+  if (palette === 'coral' || palette === 'gold') return 'maple'
+  if (palette === 'sky' || palette === 'snow') return 'oak'
+  return 'cherry'
 }
 
 export function resolveTreeChoice(
-  payload: string,
-  variety: TreeVariety | 'auto' = 'auto',
+  _payload: string,
+  palette: PaletteId = 'default',
 ): { species: TreeSpecies; habit: TreeHabit } {
-  if (variety === 'sparse') return { species: speciesForPayload(payload), habit: 'sparse' }
-  if (variety === 'oak' || variety === 'maple' || variety === 'cherry') {
-    return { species: variety, habit: 'lush' }
+  return {
+    species: speciesForPalette(palette),
+    habit: palette === 'snow' ? 'sparse' : 'lush',
   }
-  return { species: speciesForPayload(payload), habit: 'lush' }
-}
-
-/** Which picker button is on: an explicit choice, or the payload's species. */
-export function selectedVariety(payload: string, variety: TreeVariety | 'auto'): TreeVariety {
-  return variety === 'auto' ? speciesForPayload(payload) : variety
 }
 
 function oakHeight({ x, radius, angle, island, phases }: CrownSampleInput): number {
@@ -127,7 +115,7 @@ export function profileFor(species: TreeSpecies): TreeSpeciesProfile {
  * semantic layer. Layer labels are quantiles of the continuous field; they do
  * not snap leaves onto three visible shelves.
  */
-export function crownLayout(grid: ModuleGrid, seed: number, species = speciesForPayload(grid.payload)): CrownPoint[] {
+export function crownLayout(grid: ModuleGrid, seed: number, species: TreeSpecies): CrownPoint[] {
   const profile = profileFor(species)
   const island = grid.size + ISLAND_RIM * 2
   const half = (grid.size - 1) / 2

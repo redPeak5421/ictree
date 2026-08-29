@@ -100,15 +100,55 @@ export function vegetationTexture(
       g.fill()
     }
   } else if (form === 'broad') {
+    if (kind === 'shaded') {
+      // Scenery flower only — finder ink stays on the solid flat leaf.
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 - Math.PI / 2
+        g.beginPath()
+        g.ellipse(48 + Math.cos(a) * 18, 58 + Math.sin(a) * 16, 16, 28, a, 0, Math.PI * 2)
+        g.fill()
+      }
+      g.fillStyle = '#d0d0d0'
+      g.beginPath()
+      g.ellipse(48, 58, 12, 12, 0, 0, Math.PI * 2)
+      g.fill()
+      g.fillStyle = kind === 'shaded' ? '#c8c8c8' : '#ffffff'
+      g.beginPath()
+      g.moveTo(44, h)
+      g.quadraticCurveTo(48, 110, 48, 78)
+      g.quadraticCurveTo(50, 110, 54, h)
+      g.closePath()
+      g.fill()
+    } else {
+      g.beginPath()
+      g.moveTo(34, h)
+      g.bezierCurveTo(18, 112, 10, 64, 48, 8)
+      g.bezierCurveTo(90, 52, 82, 108, 62, h)
+      g.closePath()
+      g.fill()
+    }
+  } else if (kind === 'shaded') {
+    g.strokeStyle = '#d0d0d0'
+    g.lineCap = 'round'
+    g.lineWidth = 8
     g.beginPath()
-    g.moveTo(34, h)
-    g.bezierCurveTo(18, 112, 10, 64, 48, 8)
-    g.bezierCurveTo(90, 52, 82, 108, 62, h)
-    g.closePath()
+    g.moveTo(48, h)
+    g.lineTo(48, 78)
+    g.stroke()
+    g.fillStyle = '#ffffff'
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2
+      g.beginPath()
+      g.ellipse(48 + Math.cos(a) * 22, 52 + Math.sin(a) * 22, 7, 4, a, 0, Math.PI * 2)
+      g.fill()
+    }
+    g.fillStyle = '#ececec'
+    g.beginPath()
+    g.ellipse(48, 52, 16, 16, 0, 0, Math.PI * 2)
     g.fill()
   } else {
     // A stem with a forked seed head breaks the repeated single-tip rhythm.
-    g.strokeStyle = kind === 'flat' ? '#ffffff' : '#d8d8d8'
+    g.strokeStyle = '#ffffff'
     g.lineCap = 'round'
     g.lineWidth = 9
     g.beginPath()

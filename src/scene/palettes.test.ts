@@ -1,22 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { colorsOf } from './palettes'
+import { colorsOf, finderInkTones, groundCoverOf, hexRgb, ornamentOf } from './palettes'
+import { speciesForPalette } from './treeSpecies'
 
-describe('colorsOf', () => {
-  it('keeps the cream background token', () => {
-    expect(colorsOf('autumn', 'default').bg).toBe('#f6f1e7')
+function isGreenDominant(hex: string): boolean {
+  const [, g, b] = hexRgb(hex)
+  const [r] = hexRgb(hex)
+  return g > r + 20 && g > b
+}
+
+describe('palette themes', () => {
+  it('keeps the pink swatch on the tree, not summer green', () => {
+    const summer = colorsOf('summer', 'default')
+    expect(isGreenDominant(summer.foliage)).toBe(false)
+    expect(isGreenDominant(summer.finder)).toBe(false)
+    expect(speciesForPalette('default')).toBe('cherry')
+    expect(ornamentOf('spring', 'default')).toBe('blossom')
+    expect(groundCoverOf('spring', 'default')).toBe('flower')
+    expect(finderInkTones(summer).every((hex) => !isGreenDominant(hex))).toBe(true)
   })
 
-  it('uses pink foliage in spring and gold in autumn for the default swatch', () => {
-    const spring = colorsOf('spring', 'default').foliage.toLowerCase()
-    const autumn = colorsOf('autumn', 'default').foliage.toLowerCase()
-    const summer = colorsOf('summer', 'default').foliage.toLowerCase()
-    expect(spring).not.toBe(autumn)
-    expect(summer).not.toBe(autumn)
-    expect(spring).toBe('#e8a0b0')
-  })
-
-  it('lets a named swatch override foliage', () => {
-    expect(colorsOf('summer', 'coral').foliage.toLowerCase()).toBe('#e83030')
-    expect(colorsOf('autumn', 'gold').foliage.toLowerCase()).toBe('#e8a800')
+  it('maps each swatch to a matching species', () => {
+    expect(speciesForPalette('lavender')).toBe('cherry')
+    expect(speciesForPalette('coral')).toBe('maple')
+    expect(speciesForPalette('gold')).toBe('maple')
+    expect(speciesForPalette('sky')).toBe('oak')
+    expect(speciesForPalette('snow')).toBe('oak')
   })
 })

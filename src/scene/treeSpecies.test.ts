@@ -3,11 +3,8 @@ import { encodeGrid } from '../qr/encode'
 import { hashString } from './hash'
 import {
   crownLayout,
-  parseVariety,
   profileFor,
   resolveTreeChoice,
-  selectedVariety,
-  speciesForPayload,
   type CrownPoint,
   type TreeSpecies,
 } from './treeSpecies'
@@ -54,28 +51,18 @@ function metrics(points: CrownPoint[], size: number): Metrics {
 }
 
 describe('tree species selection', () => {
-  it('maps stable payload fixtures to oak, maple, and cherry', () => {
-    for (const [payload, expected] of FIXTURES) {
-      expect(speciesForPayload(payload)).toBe(expected)
-      expect(profileFor(expected).species).toBe(expected)
-    }
-  })
-
-  it('lets a picker override species or keep the previous sparse habit', () => {
-    expect(parseVariety(null)).toBe('auto')
-    expect(parseVariety('sparse')).toBe('sparse')
-    expect(resolveTreeChoice('https://example.com/tree-1', 'auto')).toEqual({ species: 'oak', habit: 'lush' })
-    expect(resolveTreeChoice('https://example.com/tree-1', 'maple')).toEqual({ species: 'maple', habit: 'lush' })
-    expect(resolveTreeChoice('https://example.com/tree-1', 'sparse')).toEqual({ species: 'oak', habit: 'sparse' })
-    expect(selectedVariety('https://example.com/tree-1', 'auto')).toBe('oak')
-    expect(selectedVariety('https://example.com/tree-2', 'sparse')).toBe('sparse')
+  it('picks species from the palette instead of a tree picker', () => {
+    expect(profileFor('oak').species).toBe('oak')
+    expect(resolveTreeChoice('https://example.com/tree-1', 'default')).toEqual({ species: 'cherry', habit: 'lush' })
+    expect(resolveTreeChoice('https://example.com/tree-1', 'coral')).toEqual({ species: 'maple', habit: 'lush' })
+    expect(resolveTreeChoice('https://example.com/tree-1', 'snow')).toEqual({ species: 'oak', habit: 'sparse' })
   })
 
   it('is deterministic and produces continuous, populated crown layers', () => {
-    for (const [payload] of FIXTURES) {
+    for (const [payload, species] of FIXTURES) {
       const grid = encodeGrid(payload)
-      const first = crownLayout(grid, hashString(payload))
-      const again = crownLayout(grid, hashString(payload))
+      const first = crownLayout(grid, hashString(payload), species)
+      const again = crownLayout(grid, hashString(payload), species)
       expect(again).toEqual(first)
       expect(new Set(first.map((point) => point.layer))).toEqual(new Set(['low', 'middle', 'high']))
       for (const layer of ['low', 'middle', 'high'] as const) {
@@ -90,7 +77,7 @@ describe('species crown profiles', () => {
   it('gives oak a low, wide, asymmetric crown with high outer shoulders', () => {
     const payload = FIXTURES[0][0]
     const grid = encodeGrid(payload)
-    const value = metrics(crownLayout(grid, hashString(payload)), grid.size)
+    const value = metrics(crownLayout(grid, hashString(payload), 'oak'), grid.size)
     expect(value.extent).toBeGreaterThanOrEqual(0.36)
     expect(value.extent).toBeLessThanOrEqual(0.48)
     expect(value.highReach).toBeGreaterThanOrEqual(0.62)
@@ -101,7 +88,7 @@ describe('species crown profiles', () => {
   it('gives maple a tall rounded crown with a raised center', () => {
     const payload = FIXTURES[1][0]
     const grid = encodeGrid(payload)
-    const value = metrics(crownLayout(grid, hashString(payload)), grid.size)
+    const value = metrics(crownLayout(grid, hashString(payload), 'maple'), grid.size)
     expect(value.extent).toBeGreaterThanOrEqual(0.48)
     expect(value.extent).toBeLessThanOrEqual(0.62)
     expect(value.center - value.outer).toBeGreaterThanOrEqual(0.12)
@@ -110,7 +97,7 @@ describe('species crown profiles', () => {
   it('gives cherry a raised umbrella shoulder, center hollow, and lowered tips', () => {
     const payload = FIXTURES[2][0]
     const grid = encodeGrid(payload)
-    const value = metrics(crownLayout(grid, hashString(payload)), grid.size)
+    const value = metrics(crownLayout(grid, hashString(payload), 'cherry'), grid.size)
     expect(value.extent).toBeGreaterThanOrEqual(0.4)
     expect(value.extent).toBeLessThanOrEqual(0.54)
     expect(value.middle - value.center).toBeGreaterThanOrEqual(0.04)

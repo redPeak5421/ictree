@@ -14,7 +14,6 @@ import {
   crownLayout,
   isCornerCell,
   profileFor,
-  speciesForPayload,
   type CrownLayer,
   type TreeHabit,
   type TreeSpecies,
@@ -238,7 +237,7 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
   const bits = payloadBits(grid)
   const reader = makeReader(bits)
   const rng = mulberry32((seed ^ hashString(bits.join(''))) >>> 0)
-  const species = options.species ?? speciesForPayload(grid.payload)
+  const species = options.species ?? 'cherry'
   const habit = options.habit ?? 'lush'
   const profile = profileFor(species)
   const crownPoints = crownLayout(grid, seed, species)

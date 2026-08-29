@@ -13,8 +13,8 @@ import {
 import { easeInOutCubic, isOverhead, OVERHEAD, SEASON_MS, squareYaw } from '../scene/view'
 import type { SceneState } from '../scene/sceneState'
 import { VIEW_PITCH, VIEW_YAW } from '../scene/tree'
-import { buildShareSearch, parseShareParams } from '../share/params'
-import type { TreeVariety } from '../scene/treeSpecies'
+import { buildShareSearch, parseShareParams, type AppMode, type ShareState } from '../share/params'
+import { isWrapped, wrapSecret } from '../share/secret'
 
 function detectWebgl(): boolean {
   try {
@@ -29,27 +29,30 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
+function bootPayload(initial: ShareState): string {
+  return initial.url || DEFAULT_PAYLOAD
+}
+
 export function useTreeState() {
   const initial = parseShareParams(window.location.search)
-  const startUrl = initial.url || DEFAULT_PAYLOAD
-  const [url, setUrl] = useState(startUrl)
+  const startPayload = bootPayload(initial)
+  const startLocked = initial.locked || isWrapped(startPayload)
+  const startMode: AppMode = initial.mode === 'reveal' || startLocked ? 'reveal' : 'create'
+  const [mode, setMode] = useState<AppMode>(startMode)
+  const [url, setUrl] = useState(startLocked ? DEFAULT_PAYLOAD : startPayload)
+  const [password, setPassword] = useState('')
+  const [payload, setPayload] = useState(startPayload)
+  const [locked, setLocked] = useState(startLocked)
   const [season, setSeason] = useState<Season>(initial.season)
   const [palette, setPalette] = useState<PaletteId>(initial.palette)
-  const [variety, setVariety] = useState<TreeVariety | 'auto'>(initial.variety)
   const [muted, setMuted] = useState(true)
-  /** The camera is straight down: the canopy reads as the code. */
   const [overhead, setOverhead] = useState(false)
-  const [error, setError] = useState<string | null>(payloadError(startUrl))
-  const [grid, setGrid] = useState<ModuleGrid>(() => encodeGrid(normalizePayload(startUrl)))
+  const [error, setError] = useState<string | null>(payloadError(startLocked ? DEFAULT_PAYLOAD : startPayload))
+  const [grid, setGrid] = useState<ModuleGrid>(() => encodeGrid(startPayload))
   const [webgl] = useState(detectWebgl)
   const [reduced, setReduced] = useState(prefersReducedMotion)
-
-  // Settled colours: what the UI, the PNG export and the fallback canvas use.
-  // Mid-transition values must never leak into an exported code.
   const [colors, setColors] = useState<SceneColors>(() => colorsOf(initial.season, initial.palette))
 
-  // Animated channel read by the R3F scene inside useFrame, so a camera glide
-  // or a season fade does not re-render React every frame.
   const scene = useRef<SceneState>({
     colors: colorsOf(initial.season, initial.palette),
     season: initial.season,
@@ -70,22 +73,44 @@ export function useTreeState() {
   }, [])
 
   useEffect(() => {
+    if (mode !== 'create') return
     const message = payloadError(url)
     setError(message)
     if (message) return
+    let cancelled = false
     const handle = window.setTimeout(() => {
-      setGrid(encodeGrid(normalizePayload(url)))
+      void (async () => {
+        const plain = normalizePayload(url)
+        try {
+          const next = password.trim() ? await wrapSecret(plain, password) : plain
+          if (cancelled) return
+          setPayload(next)
+          setLocked(isWrapped(next))
+          setGrid(encodeGrid(next))
+        } catch (err) {
+          if (!cancelled) setError(err instanceof Error ? err.message : 'Could not lock the URL')
+        }
+      })()
     }, 200)
-    return () => window.clearTimeout(handle)
-  }, [url])
+    return () => {
+      cancelled = true
+      window.clearTimeout(handle)
+    }
+  }, [url, password, mode])
 
   useEffect(() => {
-    const search = buildShareSearch({ url, season, palette, variety })
+    if (mode !== 'reveal') return
+    setError(null)
+    setGrid(encodeGrid(payload || DEFAULT_PAYLOAD))
+  }, [mode, payload])
+
+  useEffect(() => {
+    const search = buildShareSearch({ url: payload, season, palette, locked, mode })
     const next = `${window.location.pathname}${search}`
     if (`${window.location.pathname}${window.location.search}` !== next) {
       history.replaceState(null, '', next)
     }
-  }, [url, season, palette, variety])
+  }, [payload, season, palette, locked, mode])
 
   useEffect(() => {
     const target = colorsOf(season, palette)
@@ -108,11 +133,6 @@ export function useTreeState() {
     setAmbienceSeason(season)
   }, [season])
 
-  /**
-   * A tap glides the camera straight down, where the leaves are the code, or
-   * back to the isometric view. It only moves the camera: the tree is the same
-   * object either way.
-   */
   const toggleView = useCallback(() => {
     const state = scene.current
     const heading = state.pitchTarget !== null ? state.pitchTarget : state.pitch
@@ -131,15 +151,48 @@ export function useTreeState() {
     })
   }, [])
 
+  const applyShareState = useCallback((next: ShareState) => {
+    const nextPayload = next.url || DEFAULT_PAYLOAD
+    const nextLocked = next.locked || isWrapped(next.url)
+    setMode('reveal')
+    setPayload(nextPayload)
+    setLocked(nextLocked)
+    setPassword('')
+    setUrl(nextLocked ? DEFAULT_PAYLOAD : nextPayload)
+    setSeason(next.season)
+    setPalette(next.palette)
+    const cam = scene.current
+    cam.pitch = VIEW_PITCH
+    cam.yaw = VIEW_YAW
+    cam.pitchTarget = null
+    cam.yawTarget = null
+    cam.spinYaw = 0
+    cam.spinPitch = 0
+    setOverhead(false)
+  }, [])
+
+  const changeMode = useCallback((next: AppMode) => {
+    setMode(next)
+    if (next === 'create' && isWrapped(payload)) {
+      setUrl(DEFAULT_PAYLOAD)
+      setPassword('')
+      setLocked(false)
+    }
+  }, [payload])
+
   return {
+    mode,
+    setMode: changeMode,
     url,
     setUrl,
+    password,
+    setPassword,
+    payload,
+    locked,
     season,
     setSeason,
     palette,
     setPalette,
-    variety,
-    setVariety,
     muted,
     toggleMuted,
     overhead,
@@ -151,5 +204,6 @@ export function useTreeState() {
     scene,
     webgl,
     reduced,
+    applyShareState,
   }
 }

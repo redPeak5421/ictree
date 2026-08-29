@@ -16,7 +16,8 @@ import {
 } from './tree'
 
 const grid = encodeGrid('https://example.com/')
-const tree = buildTree(grid, hashString(grid.payload))
+const choice = { species: 'maple' as const }
+const tree = buildTree(grid, hashString(grid.payload), choice)
 const half = (grid.size - 1) / 2
 const isDark = (x: number, y: number) =>
   x >= 0 && y >= 0 && x < grid.size && y < grid.size && grid.cells[y * grid.size + x]!.dark
@@ -38,7 +39,7 @@ function endpoints(b: BranchInstance): [number, number, number][] {
 
 describe('buildTree', () => {
   it('is deterministic for the same payload', () => {
-    const again = buildTree(grid, hashString(grid.payload))
+    const again = buildTree(grid, hashString(grid.payload), choice)
     expect(tree.species).toBe('maple')
     expect(again.species).toBe(tree.species)
     expect(tree.branches.length).toBeGreaterThan(8)
@@ -143,7 +144,7 @@ describe('buildTree', () => {
   it('fills every corner with a grass carpet and a lush standing tuft', () => {
     expect(tree.finderCarpet).toHaveLength(tree.lawns.length * 13)
     expect(tree.finderGrass.length).toBeGreaterThan(tree.lawns.length * 20)
-    const again = buildTree(grid, hashString(grid.payload))
+    const again = buildTree(grid, hashString(grid.payload), choice)
     expect(again.finderCarpet[0]).toEqual(tree.finderCarpet[0])
     expect(again.finderGrass[0]).toEqual(tree.finderGrass[0])
     for (const blade of tree.finderGrass) {
@@ -166,7 +167,7 @@ describe('buildTree', () => {
     // Thick vertical stacks on each dark module, still bounded.
     expect(tree.filler.length).toBeGreaterThan(canopyModules * 12)
     expect(tree.filler.length).toBeLessThanOrEqual(canopyModules * 70 + tree.branches.length * 3 + 16)
-    const again = buildTree(grid, hashString(grid.payload))
+    const again = buildTree(grid, hashString(grid.payload), choice)
     expect(again.filler.length).toBe(tree.filler.length)
     expect(again.filler[0]).toEqual(tree.filler[0])
     expect(tree.habit).toBe('lush')
@@ -188,7 +189,7 @@ describe('buildTree', () => {
     const canopyModules = grid.cells.filter(
       (cell) => cell.dark && !isCornerModule(cell.x, cell.y, grid.size),
     ).length
-    const sparse = buildTree(grid, hashString(grid.payload), { habit: 'sparse' })
+    const sparse = buildTree(grid, hashString(grid.payload), { ...choice, habit: 'sparse' })
     expect(sparse.habit).toBe('sparse')
     expect(sparse.species).toBe(tree.species)
     expect(sparse.leaves).toHaveLength(tree.leaves.length)

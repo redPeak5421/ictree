@@ -10,8 +10,9 @@ import { Particles } from './particles/Particles'
 import type { SceneRef } from './sceneState'
 import { TreeFoliage } from './TreeFoliage'
 import { hashString } from './hash'
+import type { PaletteId, Season } from './palettes'
 import { buildTree, islandExtent } from './tree'
-import { resolveTreeChoice, type TreeVariety } from './treeSpecies'
+import { resolveTreeChoice } from './treeSpecies'
 import { OVERHEAD, squareYaw } from './view'
 
 interface Pointer {
@@ -32,21 +33,23 @@ const TAP_MS = 600
 
 export function TreeCanvas({
   grid,
-  variety = 'auto',
+  palette,
+  season,
   scene,
   reduced,
   onToggle,
   onOverhead,
 }: {
   grid: ModuleGrid
-  variety?: TreeVariety | 'auto'
+  palette: PaletteId
+  season: Season
   scene: SceneRef
   reduced: boolean
   onToggle: () => void
   onOverhead: (overhead: boolean) => void
 }) {
   const island = islandExtent(grid.size)
-  const choice = resolveTreeChoice(grid.payload, variety)
+  const choice = resolveTreeChoice(grid.payload, palette)
   const rig = useMemo(
     () => buildTree(grid, hashString(grid.payload), choice),
     [grid, choice.species, choice.habit],
@@ -121,10 +124,11 @@ export function TreeCanvas({
       orthographic
       camera={{ position: [island, island, island], near: 0.1, far: 500 }}
       dpr={[1, 2]}
-      gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
+      gl={{ antialias: true, alpha: false, powerPreference: 'high-performance', preserveDrawingBuffer: true }}
       onCreated={({ gl }) => {
         gl.setClearColor(bg, 1)
         gl.toneMapping = NoToneMapping
+        gl.domElement.setAttribute('data-grove-canvas', '')
       }}
       onPointerDown={down}
       onPointerMove={move}
@@ -143,8 +147,8 @@ export function TreeCanvas({
         onOverhead={onOverhead}
       />
       <Ground grid={grid} rig={rig} scene={scene} />
-      <Grass grid={grid} scene={scene} reduced={reduced} />
-      <TreeFoliage rig={rig} scene={scene} />
+      <Grass grid={grid} scene={scene} reduced={reduced} season={season} palette={palette} />
+      <TreeFoliage rig={rig} scene={scene} palette={palette} season={season} />
       <Particles grid={grid} scene={scene} reduced={reduced} />
     </Canvas>
   )

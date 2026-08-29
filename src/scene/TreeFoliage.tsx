@@ -3,9 +3,16 @@ import { useFrame } from '@react-three/fiber'
 import { Color, InstancedMesh, Object3D, type Texture } from 'three'
 import { toLumaHex } from '../qr/contrast'
 import type { FinderCarpetInstance, FinderVegetationInstance } from './grassLayout'
-import { carpetTexture, leafTexture, vegetationTexture } from './leafTexture'
+import { carpetTexture, leafTexture, petalTexture, vegetationTexture } from './leafTexture'
 import type { LeafShape } from './leafShape'
-import { foliageTones, mixHex, type SceneColors } from './palettes'
+import {
+  finderInkTones,
+  foliageTones,
+  mixHex,
+  ornamentOf,
+  type PaletteId,
+  type Season,
+} from './palettes'
 import type { SceneRef } from './sceneState'
 import type { FillerInstance, LeafInstance, TreeRig } from './tree'
 import { branchTones } from './treeAppearance'
@@ -24,19 +31,35 @@ interface Groups {
     ovate: FillerInstance[]
     detail: FillerInstance[]
   }
+  ornaments: LeafInstance[]
 }
 
-function grassTones(colors: SceneColors): string[] {
-  return [
-    colors.grass,
-    mixHex(colors.grass, colors.grassTip, 0.35),
-    mixHex(colors.grass, colors.grassTip, 0.7),
-    colors.grassTip,
-  ]
+function poseFinder(item: FinderVegetationInstance, lean: number) {
+  const ux = Math.sin(lean) * Math.sin(item.heading)
+  const uy = Math.cos(lean)
+  const uz = Math.sin(lean) * Math.cos(item.heading)
+  dummy.position.set(
+    item.root[0] + (ux * item.height) / 2,
+    item.root[1] + (uy * item.height) / 2,
+    item.root[2] + (uz * item.height) / 2,
+  )
+  dummy.rotation.set(lean, item.heading, 0, 'YXZ')
+  dummy.scale.set(item.width, item.height, 1)
+  dummy.updateMatrix()
 }
 
 /** Static canopy and QR-critical corner vegetation. Nothing faces the camera. */
-export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
+export function TreeFoliage({
+  rig,
+  scene,
+  palette,
+  season,
+}: {
+  rig: TreeRig
+  scene: SceneRef
+  palette: PaletteId
+  season: Season
+}) {
   const branchRef = useRef<InstancedMesh>(null)
   const ovateRef = useRef<InstancedMesh>(null)
   const oakRef = useRef<InstancedMesh>(null)
@@ -47,6 +70,7 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
   const finderCarpetRef = useRef<InstancedMesh>(null)
   const fillerOvateRef = useRef<InstancedMesh>(null)
   const fillerDetailRef = useRef<InstancedMesh>(null)
+  const ornamentRef = useRef<InstancedMesh>(null)
   const ovateMap = useMemo(() => leafTexture('ovate'), [])
   const oakMap = useMemo(() => leafTexture('oak'), [])
   const mapleMap = useMemo(() => leafTexture('maple'), [])
@@ -54,26 +78,33 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
   const finderBladeMap = useMemo(() => vegetationTexture('blade', 'flat'), [])
   const finderBroadMap = useMemo(() => vegetationTexture('broad', 'flat'), [])
   const carpetMap = useMemo(() => carpetTexture(), [])
+  const blossomMap = useMemo(() => petalTexture(), [])
   const detailMap = rig.species === 'oak' ? oakMap : rig.species === 'cherry' ? cherryMap : mapleMap
   const colorKey = useRef('')
 
-  const groups = useMemo<Groups>(() => ({
-    leaves: {
-      ovate: rig.leaves.filter((leaf) => leaf.shape === 'ovate'),
-      oak: rig.leaves.filter((leaf) => leaf.shape === 'oak'),
-      maple: rig.leaves.filter((leaf) => leaf.shape === 'maple'),
-      cherry: rig.leaves.filter((leaf) => leaf.shape === 'cherry'),
-    },
-    finder: {
-      blade: rig.finderGrass.filter((item) => item.form === 'blade'),
-      broad: rig.finderGrass.filter((item) => item.form === 'broad'),
-      carpet: rig.finderCarpet,
-    },
-    filler: {
-      ovate: rig.filler.filter((leaf) => leaf.shape === 'ovate'),
-      detail: rig.filler.filter((leaf) => leaf.shape !== 'ovate'),
-    },
-  }), [rig])
+  const groups = useMemo<Groups>(() => {
+    const ornaments = ornamentOf(season, palette) === 'none'
+      ? []
+      : rig.leaves.filter((_, index) => index % 8 === 0)
+    return {
+      leaves: {
+        ovate: rig.leaves.filter((leaf) => leaf.shape === 'ovate'),
+        oak: rig.leaves.filter((leaf) => leaf.shape === 'oak'),
+        maple: rig.leaves.filter((leaf) => leaf.shape === 'maple'),
+        cherry: rig.leaves.filter((leaf) => leaf.shape === 'cherry'),
+      },
+      finder: {
+        blade: rig.finderGrass.filter((item) => item.form === 'blade'),
+        broad: rig.finderGrass.filter((item) => item.form === 'broad'),
+        carpet: rig.finderCarpet,
+      },
+      filler: {
+        ovate: rig.filler.filter((leaf) => leaf.shape === 'ovate'),
+        detail: rig.filler.filter((leaf) => leaf.shape !== 'ovate'),
+      },
+      ornaments,
+    }
+  }, [rig, palette, season])
 
   useLayoutEffect(() => {
     const branches = branchRef.current
@@ -100,29 +131,6 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
         dummy.position.set(...leaf.position)
         dummy.rotation.set(...leaf.euler, 'YXZ')
         dummy.scale.setScalar(leaf.scale)
-        dummy.updateMatrix()
-        mesh.setMatrixAt(index, dummy.matrix)
-      })
-      mesh.instanceMatrix.needsUpdate = true
-    }
-
-    const finderMeshes: readonly [InstancedMesh | null, FinderVegetationInstance[]][] = [
-      [finderBladeRef.current, groups.finder.blade],
-      [finderBroadRef.current, groups.finder.broad],
-    ]
-    for (const [mesh, items] of finderMeshes) {
-      if (!mesh) continue
-      items.forEach((item, index) => {
-        const ux = Math.sin(item.lean) * Math.sin(item.heading)
-        const uy = Math.cos(item.lean)
-        const uz = Math.sin(item.lean) * Math.cos(item.heading)
-        dummy.position.set(
-          item.root[0] + (ux * item.height) / 2,
-          item.root[1] + (uy * item.height) / 2,
-          item.root[2] + (uz * item.height) / 2,
-        )
-        dummy.rotation.set(item.lean, item.heading, 0, 'YXZ')
-        dummy.scale.set(item.width, item.height, 1)
         dummy.updateMatrix()
         mesh.setMatrixAt(index, dummy.matrix)
       })
@@ -156,14 +164,40 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
       })
       mesh.instanceMatrix.needsUpdate = true
     }
-    colorKey.current = ''
-  }, [rig, groups])
 
-  useFrame(() => {
+    const ornaments = ornamentRef.current
+    if (ornaments) {
+      const fruit = ornamentOf(season, palette) === 'fruit'
+      groups.ornaments.forEach((leaf, index) => {
+        dummy.position.set(leaf.position[0], leaf.position[1] + 0.05, leaf.position[2])
+        dummy.rotation.set(...leaf.euler, 'YXZ')
+        dummy.scale.setScalar(leaf.scale * (fruit ? 0.4 : 0.36))
+        dummy.updateMatrix()
+        ornaments.setMatrixAt(index, dummy.matrix)
+      })
+      ornaments.instanceMatrix.needsUpdate = true
+    }
+    colorKey.current = ''
+  }, [rig, groups, palette, season])
+
+  useFrame(({ clock }) => {
     const { colors, pitch } = scene.current
-    // One scene at every pitch. Wood recedes toward the pale QR-safe trunk
-    // colour; grass and leaves stay put, so the code appears by angle alone.
-    const next = `${colors.foliage}|${colors.foliageVar}|${colors.accent}|${colors.trunk}|${colors.grass}|${colors.grassTip}|${pitch.toFixed(3)}`
+    const t = clock.elapsedTime
+    const sway = pitch > 1.45 ? 0 : 1
+    const finderMeshes: readonly [InstancedMesh | null, FinderVegetationInstance[]][] = [
+      [finderBladeRef.current, groups.finder.blade],
+      [finderBroadRef.current, groups.finder.broad],
+    ]
+    for (const [mesh, items] of finderMeshes) {
+      if (!mesh) continue
+      items.forEach((item, index) => {
+        poseFinder(item, item.lean + Math.sin(t * 1.35 + item.phase) * 0.03 * sway)
+        mesh.setMatrixAt(index, dummy.matrix)
+      })
+      mesh.instanceMatrix.needsUpdate = true
+    }
+
+    const next = `${colors.foliage}|${colors.foliageVar}|${colors.accent}|${colors.trunk}|${colors.grass}|${colors.grassTip}|${pitch.toFixed(3)}|${palette}`
     if (next === colorKey.current) return
     colorKey.current = next
 
@@ -177,7 +211,6 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
       if (branches.instanceColor) branches.instanceColor.needsUpdate = true
     }
 
-    // Hue varies by leaf while luminance remains pinned to its QR module.
     const tones = foliageTones(colors)
     const inkCache = new Map<string, Color>()
     const leafMeshes: readonly [InstancedMesh | null, LeafInstance[]][] = [
@@ -200,12 +233,8 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
     }
 
-    const finderTones = grassTones(colors)
+    const finderTones = finderInkTones(colors)
     const finderCache = new Map<string, Color>()
-    const finderMeshes: readonly [InstancedMesh | null, FinderVegetationInstance[]][] = [
-      [finderBladeRef.current, groups.finder.blade],
-      [finderBroadRef.current, groups.finder.broad],
-    ]
     for (const [mesh, items] of finderMeshes) {
       if (!mesh) continue
       items.forEach((item, index) => {
@@ -234,8 +263,6 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
       if (carpetMesh.instanceColor) carpetMesh.instanceColor.needsUpdate = true
     }
 
-    // Filler carries no ink, so its brightness is free to model real light:
-    // sunlit tips above, shaded depths inside the crown.
     const fillerCache = new Map<string, Color>()
     const fillerMeshes: readonly [InstancedMesh | null, FillerInstance[]][] = [
       [fillerOvateRef.current, groups.filler.ovate],
@@ -257,6 +284,20 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
         mesh.setColorAt(index, color)
       })
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+    }
+
+    const ornaments = ornamentRef.current
+    if (ornaments) {
+      groups.ornaments.forEach((leaf, index) => {
+        const key = `o|${leaf.ink}`
+        let color = inkCache.get(key)
+        if (!color) {
+          color = new Color(toLumaHex(colors.accent, leaf.ink))
+          inkCache.set(key, color)
+        }
+        ornaments.setColorAt(index, color)
+      })
+      if (ornaments.instanceColor) ornaments.instanceColor.needsUpdate = true
     }
   })
 
@@ -306,6 +347,12 @@ export function TreeFoliage({ rig, scene }: { rig: TreeRig; scene: SceneRef }) {
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={detailMap} transparent alphaTest={0.42} side={2} />
       </instancedMesh>
+      {groups.ornaments.length > 0 && (
+        <instancedMesh ref={ornamentRef} args={[undefined, undefined, groups.ornaments.length]} key={`or${groups.ornaments.length}`} frustumCulled={false}>
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial map={blossomMap} transparent alphaTest={0.42} side={2} />
+        </instancedMesh>
+      )}
     </group>
   )
 }
