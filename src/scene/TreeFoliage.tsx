@@ -3,8 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import { Color, InstancedMesh, Object3D, type Texture } from 'three'
 import { toLumaHex } from '../qr/contrast'
 import type { FinderCarpetInstance, FinderVegetationInstance } from './grassLayout'
-import { carpetTexture, leafTexture, petalTexture, vegetationTexture } from './leafTexture'
-import type { LeafShape } from './leafShape'
+import { carpetTexture, fruitTexture, leafTexture, petalTexture, vegetationTexture } from './leafTexture'
+import { LEAF_SHAPES, type LeafShape } from './leafShape'
 import {
   finderInkTones,
   foliageTones,
@@ -19,6 +19,19 @@ import { branchTones } from './treeAppearance'
 
 const dummy = new Object3D()
 const tint = new Color()
+
+function emptyLeaves(): Record<LeafShape, LeafInstance[]> {
+  return {
+    ovate: [],
+    oak: [],
+    maple: [],
+    cherry: [],
+    willow: [],
+    pine: [],
+    apple: [],
+    banana: [],
+  }
+}
 
 interface Groups {
   leaves: Record<LeafShape, LeafInstance[]>
@@ -61,38 +74,33 @@ export function TreeFoliage({
   season: Season
 }) {
   const branchRef = useRef<InstancedMesh>(null)
-  const ovateRef = useRef<InstancedMesh>(null)
-  const oakRef = useRef<InstancedMesh>(null)
-  const mapleRef = useRef<InstancedMesh>(null)
-  const cherryRef = useRef<InstancedMesh>(null)
+  const leafRefs = useRef<Partial<Record<LeafShape, InstancedMesh | null>>>({})
   const finderBladeRef = useRef<InstancedMesh>(null)
   const finderBroadRef = useRef<InstancedMesh>(null)
   const finderCarpetRef = useRef<InstancedMesh>(null)
   const fillerOvateRef = useRef<InstancedMesh>(null)
   const fillerDetailRef = useRef<InstancedMesh>(null)
   const ornamentRef = useRef<InstancedMesh>(null)
-  const ovateMap = useMemo(() => leafTexture('ovate'), [])
-  const oakMap = useMemo(() => leafTexture('oak'), [])
-  const mapleMap = useMemo(() => leafTexture('maple'), [])
-  const cherryMap = useMemo(() => leafTexture('cherry'), [])
+  const leafMaps = useMemo(() => {
+    const maps = {} as Record<LeafShape, Texture>
+    for (const shape of LEAF_SHAPES) maps[shape] = leafTexture(shape)
+    return maps
+  }, [])
   const finderBladeMap = useMemo(() => vegetationTexture('blade', 'flat'), [])
   const finderBroadMap = useMemo(() => vegetationTexture('broad', 'flat'), [])
   const carpetMap = useMemo(() => carpetTexture(), [])
   const blossomMap = useMemo(() => petalTexture(), [])
-  const detailMap = rig.species === 'oak' ? oakMap : rig.species === 'cherry' ? cherryMap : mapleMap
+  const fruitMap = useMemo(() => fruitTexture(palette === 'sky' ? 'long' : 'round'), [palette])
+  const detailMap = leafMaps[rig.species]
   const colorKey = useRef('')
+  const ornamentKind = ornamentOf(season, palette)
 
   const groups = useMemo<Groups>(() => {
-    const ornaments = ornamentOf(season, palette) === 'none'
-      ? []
-      : rig.leaves.filter((_, index) => index % 8 === 0)
+    const leaves = emptyLeaves()
+    for (const leaf of rig.leaves) leaves[leaf.shape].push(leaf)
+    const ornaments = ornamentKind === 'none' ? [] : rig.leaves.filter((_, index) => index % 8 === 0)
     return {
-      leaves: {
-        ovate: rig.leaves.filter((leaf) => leaf.shape === 'ovate'),
-        oak: rig.leaves.filter((leaf) => leaf.shape === 'oak'),
-        maple: rig.leaves.filter((leaf) => leaf.shape === 'maple'),
-        cherry: rig.leaves.filter((leaf) => leaf.shape === 'cherry'),
-      },
+      leaves,
       finder: {
         blade: rig.finderGrass.filter((item) => item.form === 'blade'),
         broad: rig.finderGrass.filter((item) => item.form === 'broad'),
@@ -104,7 +112,7 @@ export function TreeFoliage({
       },
       ornaments,
     }
-  }, [rig, palette, season])
+  }, [rig, ornamentKind])
 
   useLayoutEffect(() => {
     const branches = branchRef.current
@@ -119,13 +127,9 @@ export function TreeFoliage({
       branches.instanceMatrix.needsUpdate = true
     }
 
-    const leafMeshes: readonly [InstancedMesh | null, LeafInstance[]][] = [
-      [ovateRef.current, groups.leaves.ovate],
-      [oakRef.current, groups.leaves.oak],
-      [mapleRef.current, groups.leaves.maple],
-      [cherryRef.current, groups.leaves.cherry],
-    ]
-    for (const [mesh, items] of leafMeshes) {
+    for (const shape of LEAF_SHAPES) {
+      const mesh = leafRefs.current[shape]
+      const items = groups.leaves[shape]
       if (!mesh) continue
       items.forEach((leaf, index) => {
         dummy.position.set(...leaf.position)
@@ -167,18 +171,18 @@ export function TreeFoliage({
 
     const ornaments = ornamentRef.current
     if (ornaments) {
-      const fruit = ornamentOf(season, palette) === 'fruit'
+      const fruit = ornamentKind === 'fruit'
       groups.ornaments.forEach((leaf, index) => {
         dummy.position.set(leaf.position[0], leaf.position[1] + 0.05, leaf.position[2])
         dummy.rotation.set(...leaf.euler, 'YXZ')
-        dummy.scale.setScalar(leaf.scale * (fruit ? 0.4 : 0.36))
+        dummy.scale.setScalar(leaf.scale * (fruit ? 0.42 : 0.36))
         dummy.updateMatrix()
         ornaments.setMatrixAt(index, dummy.matrix)
       })
       ornaments.instanceMatrix.needsUpdate = true
     }
     colorKey.current = ''
-  }, [rig, groups, palette, season])
+  }, [rig, groups, ornamentKind])
 
   useFrame(({ clock }) => {
     const { colors, pitch } = scene.current
@@ -213,13 +217,9 @@ export function TreeFoliage({
 
     const tones = foliageTones(colors)
     const inkCache = new Map<string, Color>()
-    const leafMeshes: readonly [InstancedMesh | null, LeafInstance[]][] = [
-      [ovateRef.current, groups.leaves.ovate],
-      [oakRef.current, groups.leaves.oak],
-      [mapleRef.current, groups.leaves.maple],
-      [cherryRef.current, groups.leaves.cherry],
-    ]
-    for (const [mesh, items] of leafMeshes) {
+    for (const shape of LEAF_SHAPES) {
+      const mesh = leafRefs.current[shape]
+      const items = groups.leaves[shape]
       if (!mesh) continue
       items.forEach((leaf, index) => {
         const key = `${leaf.tone}|${leaf.ink}`
@@ -311,22 +311,19 @@ export function TreeFoliage({
         <cylinderGeometry args={[0.9, 1, 1, 8]} />
         <meshBasicMaterial />
       </instancedMesh>
-      <instancedMesh ref={ovateRef} args={[undefined, undefined, groups.leaves.ovate.length]} key={`o${groups.leaves.ovate.length}`} frustumCulled={false}>
-        <planeGeometry args={[1, 1]} />
-        {cutout(ovateMap)}
-      </instancedMesh>
-      <instancedMesh ref={oakRef} args={[undefined, undefined, groups.leaves.oak.length]} key={`k${groups.leaves.oak.length}`} frustumCulled={false}>
-        <planeGeometry args={[1, 1]} />
-        {cutout(oakMap)}
-      </instancedMesh>
-      <instancedMesh ref={mapleRef} args={[undefined, undefined, groups.leaves.maple.length]} key={`m${groups.leaves.maple.length}`} frustumCulled={false}>
-        <planeGeometry args={[1, 1]} />
-        {cutout(mapleMap)}
-      </instancedMesh>
-      <instancedMesh ref={cherryRef} args={[undefined, undefined, groups.leaves.cherry.length]} key={`c${groups.leaves.cherry.length}`} frustumCulled={false}>
-        <planeGeometry args={[1, 1]} />
-        {cutout(cherryMap)}
-      </instancedMesh>
+      {LEAF_SHAPES.map((shape) => (
+        <instancedMesh
+          key={`${shape}${groups.leaves[shape].length}`}
+          ref={(mesh) => {
+            leafRefs.current[shape] = mesh
+          }}
+          args={[undefined, undefined, Math.max(1, groups.leaves[shape].length)]}
+          frustumCulled={false}
+        >
+          <planeGeometry args={[1, 1]} />
+          {cutout(leafMaps[shape])}
+        </instancedMesh>
+      ))}
       <instancedMesh ref={finderBladeRef} args={[undefined, undefined, groups.finder.blade.length]} key={`fb${groups.finder.blade.length}`} frustumCulled={false}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={finderBladeMap} transparent alphaTest={0.42} side={2} />
@@ -341,16 +338,16 @@ export function TreeFoliage({
       </instancedMesh>
       <instancedMesh ref={fillerOvateRef} args={[undefined, undefined, groups.filler.ovate.length]} key={`lo${groups.filler.ovate.length}`} frustumCulled={false}>
         <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial map={ovateMap} transparent alphaTest={0.42} side={2} />
+        <meshBasicMaterial map={leafMaps.ovate} transparent alphaTest={0.42} side={2} />
       </instancedMesh>
       <instancedMesh ref={fillerDetailRef} args={[undefined, undefined, groups.filler.detail.length]} key={`ld${groups.filler.detail.length}`} frustumCulled={false}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={detailMap} transparent alphaTest={0.42} side={2} />
       </instancedMesh>
       {groups.ornaments.length > 0 && (
-        <instancedMesh ref={ornamentRef} args={[undefined, undefined, groups.ornaments.length]} key={`or${groups.ornaments.length}`} frustumCulled={false}>
+        <instancedMesh ref={ornamentRef} args={[undefined, undefined, groups.ornaments.length]} key={`or${groups.ornaments.length}${ornamentKind}`} frustumCulled={false}>
           <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial map={blossomMap} transparent alphaTest={0.42} side={2} />
+          <meshBasicMaterial map={ornamentKind === 'fruit' ? fruitMap : blossomMap} transparent alphaTest={0.42} side={2} />
         </instancedMesh>
       )}
     </group>

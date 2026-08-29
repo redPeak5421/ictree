@@ -103,7 +103,9 @@ export function colorsOf(season: Season, palette: PaletteId): SceneColors {
 
 export function ornamentOf(season: Season, palette: PaletteId): OrnamentKind {
   if (palette === 'snow') return 'none'
-  if (season === 'autumn' && (palette === 'coral' || palette === 'gold' || palette === 'default')) return 'fruit'
+  if (palette === 'gold') return season === 'spring' ? 'blossom' : 'fruit'
+  if (palette === 'sky') return season === 'spring' ? 'none' : 'fruit'
+  if (season === 'autumn' && (palette === 'coral' || palette === 'default')) return 'fruit'
   if (season === 'spring') return 'blossom'
   if (palette === 'default' || palette === 'lavender') return 'blossom'
   return 'none'

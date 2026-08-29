@@ -1,4 +1,5 @@
 import { PALETTE_SWATCHES, type PaletteId } from '../scene/palettes'
+import { speciesForPalette } from '../scene/treeSpecies'
 
 export function PaletteRow({
   palette,
@@ -15,7 +16,8 @@ export function PaletteRow({
           type="button"
           role="radio"
           aria-checked={swatch.id === palette}
-          aria-label={swatch.id}
+          aria-label={`${speciesForPalette(swatch.id)} ${swatch.id}`}
+          title={speciesForPalette(swatch.id)}
           className={swatch.id === palette ? 'swatch is-selected' : 'swatch'}
           style={{ background: swatch.hex }}
           onClick={() => onChange(swatch.id)}

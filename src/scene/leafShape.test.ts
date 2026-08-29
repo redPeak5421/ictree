@@ -4,18 +4,16 @@ import {
   boundsOfOutline,
   fitScale,
   halfExtents,
+  LEAF_SHAPES,
   qrSlots,
   silhouette,
   textureKindForLeafShape,
   type Bounds,
-  type LeafShape,
 } from './leafShape'
-
-const SHAPES: LeafShape[] = ['ovate', 'oak', 'maple', 'cherry']
 
 describe('leaf silhouettes', () => {
   it('keeps every shared outline normalized and its declared bounds exact', () => {
-    for (const shape of SHAPES) {
+    for (const shape of LEAF_SHAPES) {
       const outline = silhouette(shape)
       expect(outline.length).toBeGreaterThanOrEqual(16)
       expect(outline.every(([x, y]) => Math.abs(x) <= 0.5 && Math.abs(y) <= 0.5)).toBe(true)
@@ -24,12 +22,12 @@ describe('leaf silhouettes', () => {
   })
 
   it('maps every supported shape to its renderer texture kind', () => {
-    expect(SHAPES.map(textureKindForLeafShape)).toEqual(SHAPES)
+    expect(LEAF_SHAPES.map(textureKindForLeafShape)).toEqual([...LEAF_SHAPES])
   })
 
   it('fits every rotated outline point inside asymmetric module bounds', () => {
     const bounds: Bounds = { left: -0.5, right: 0.9, back: -0.72, front: 0.5 }
-    for (const shape of SHAPES) {
+    for (const shape of LEAF_SHAPES) {
       for (const phi of [0, 0.37, Math.PI / 4, Math.PI / 2, 2.1]) {
         const ox = 0.08
         const oz = -0.06

@@ -102,9 +102,12 @@ Vite has no custom `server.port`. Bind may be IPv6-only (`http://localhost:5199/
 
 | Palette | Species | Notes |
 | --- | --- | --- |
-| `default`, `lavender` | cherry | Pink/purple foliage; blossom except autumn default fruit |
-| `coral`, `gold` | maple | Autumn fruit; gold-summer ground is dandelion |
-| `sky`, `snow` | oak | Snow is `sparse`, no ornaments |
+| `default` | cherry | Pink foliage; blossom, autumn fruit |
+| `lavender` | willow | Drooping crown; spring catkins |
+| `coral` | maple | Autumn fruit |
+| `gold` | apple | Spring blossom, summer/autumn fruit |
+| `sky` | banana | Tropical leaves; fruit after spring |
+| `snow` | pine | Evergreen cone, `sparse`, no ornaments |
 
 `groundCoverOf`: meadow / flower / dandelion. Finder ink uses `finderInkTones` (foliage family), not a second green QR.
 

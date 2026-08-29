@@ -1,8 +1,9 @@
 import type { PaletteId } from './palettes'
 import { ISLAND_RIM, type ModuleCell, type ModuleGrid } from '../qr/types'
+import type { LeafShape } from './leafShape'
 import { hashString, mulberry32 } from './hash'
 
-export type TreeSpecies = 'oak' | 'maple' | 'cherry'
+export type TreeSpecies = 'oak' | 'maple' | 'cherry' | 'willow' | 'pine' | 'apple' | 'banana'
 export type CrownLayer = 'low' | 'middle' | 'high'
 
 export interface CrownPoint {
@@ -37,10 +38,21 @@ export function isCornerCell(x: number, y: number, size: number): boolean {
 
 export type TreeHabit = 'lush' | 'sparse'
 
+export const PALETTE_SPECIES: Record<PaletteId, TreeSpecies> = {
+  default: 'cherry',
+  lavender: 'willow',
+  coral: 'maple',
+  gold: 'apple',
+  sky: 'banana',
+  snow: 'pine',
+}
+
 export function speciesForPalette(palette: PaletteId): TreeSpecies {
-  if (palette === 'coral' || palette === 'gold') return 'maple'
-  if (palette === 'sky' || palette === 'snow') return 'oak'
-  return 'cherry'
+  return PALETTE_SPECIES[palette]
+}
+
+export function leafShapeFor(species: TreeSpecies): LeafShape {
+  return species
 }
 
 export function resolveTreeChoice(
@@ -82,6 +94,35 @@ function cherryHeight({ x, z, radius, angle, phases }: CrownSampleInput): number
   return umbrella - hollow - tips + lobes * (0.45 + radius * 0.55) + crownNoise
 }
 
+function willowHeight({ x, z, radius, angle, phases }: CrownSampleInput): number {
+  const cascade = 0.9 * Math.exp(-Math.pow((radius - 0.4) / 0.28, 2))
+  const hang = 0.5 * radius ** 1.55
+  const hollow = 0.1 * Math.exp(-Math.pow(radius / 0.2, 2))
+  const lobes = 0.08 * Math.sin(4 * angle + phases[0]!) + 0.04 * Math.cos(7 * angle + phases[1]!)
+  const crownNoise = 0.03 * Math.sin(x * 0.48 + phases[2]!) * Math.cos(z * 0.5 + phases[3]!)
+  return cascade - hang - hollow + lobes * (0.4 + radius * 0.6) + crownNoise
+}
+
+function pineHeight({ radius, angle, phases }: CrownSampleInput): number {
+  const cone = 1.2 * (1 - radius)
+  const lobes = 0.07 * Math.sin(6 * angle + phases[0]!) * radius
+  return cone + lobes
+}
+
+function appleHeight({ x, z, radius, angle, phases }: CrownSampleInput): number {
+  const lobes =
+    0.1 * Math.sin(4 * angle + phases[0]!) * (0.4 + radius * 0.6) +
+    0.05 * Math.cos(2 * angle + phases[1]!)
+  const crownNoise = 0.035 * Math.sin(x * 0.62 + phases[2]!) * Math.sin(z * 0.58 + phases[3]!)
+  return 0.9 * (1 - radius ** 1.5) + lobes + crownNoise
+}
+
+function bananaHeight({ radius, angle, phases }: CrownSampleInput): number {
+  const fountain = 1.14 * (1 - radius ** 0.82)
+  const lobes = 0.07 * Math.cos(3 * angle + phases[0]!)
+  return fountain + lobes
+}
+
 const PROFILES: Record<TreeSpecies, TreeSpeciesProfile> = {
   oak: {
     species: 'oak',
@@ -103,6 +144,34 @@ const PROFILES: Record<TreeSpecies, TreeSpeciesProfile> = {
     verticalExtent: [0.4, 0.54],
     limbPitch: [0.52, 0.9],
     heightAt: cherryHeight,
+  },
+  willow: {
+    species: 'willow',
+    trunkRatio: 0.16,
+    verticalExtent: [0.38, 0.52],
+    limbPitch: [0.62, 1.05],
+    heightAt: willowHeight,
+  },
+  pine: {
+    species: 'pine',
+    trunkRatio: 0.28,
+    verticalExtent: [0.52, 0.7],
+    limbPitch: [0.22, 0.48],
+    heightAt: pineHeight,
+  },
+  apple: {
+    species: 'apple',
+    trunkRatio: 0.2,
+    verticalExtent: [0.42, 0.56],
+    limbPitch: [0.36, 0.7],
+    heightAt: appleHeight,
+  },
+  banana: {
+    species: 'banana',
+    trunkRatio: 0.3,
+    verticalExtent: [0.44, 0.58],
+    limbPitch: [0.28, 0.58],
+    heightAt: bananaHeight,
   },
 }
 

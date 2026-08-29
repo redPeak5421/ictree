@@ -3,7 +3,18 @@
  * Coordinates live in the unit plane used by Three.js PlaneGeometry.
  */
 
-export type LeafShape = 'ovate' | 'oak' | 'maple' | 'cherry'
+export type LeafShape = 'ovate' | 'oak' | 'maple' | 'cherry' | 'willow' | 'pine' | 'apple' | 'banana'
+
+export const LEAF_SHAPES: readonly LeafShape[] = [
+  'ovate',
+  'oak',
+  'maple',
+  'cherry',
+  'willow',
+  'pine',
+  'apple',
+  'banana',
+]
 /** Compatibility for the pre-species tree builder; remove once it passes shapes directly. */
 export type Silhouette = LeafShape | 'leaf'
 export type Point2 = readonly [number, number]
@@ -49,11 +60,24 @@ function oakOutline(): readonly Point2[] {
   })
 }
 
+function pineOutline(): readonly Point2[] {
+  const count = 36
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (index / count) * Math.PI * 2
+    const radius = 0.49 * (0.22 + 0.78 * Math.abs(Math.cos(angle)))
+    return [Math.sin(angle) * 0.09, Math.cos(angle) * radius] as const
+  })
+}
+
 const OUTLINES: Record<LeafShape, readonly Point2[]> = {
   ovate: superellipse(64, 0.48, 0.49, 2.8),
   oak: oakOutline(),
   maple: mapleOutline(),
   cherry: ellipse(56, 0.32, 0.49, 0.045, 14),
+  willow: ellipse(48, 0.14, 0.49, 0.03, 8),
+  pine: pineOutline(),
+  apple: ellipse(56, 0.38, 0.46, 0.03, 10),
+  banana: superellipse(48, 0.2, 0.49, 2.2),
 }
 
 function normalizedShape(shape: Silhouette): LeafShape {
@@ -84,6 +108,10 @@ const EXTENTS: Record<LeafShape, [number, number]> = {
   oak: boundsOfOutline(OUTLINES.oak),
   maple: boundsOfOutline(OUTLINES.maple),
   cherry: boundsOfOutline(OUTLINES.cherry),
+  willow: boundsOfOutline(OUTLINES.willow),
+  pine: boundsOfOutline(OUTLINES.pine),
+  apple: boundsOfOutline(OUTLINES.apple),
+  banana: boundsOfOutline(OUTLINES.banana),
 }
 
 export function halfExtents(shape: Silhouette = 'ovate'): [number, number] {

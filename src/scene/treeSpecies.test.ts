@@ -54,8 +54,11 @@ describe('tree species selection', () => {
   it('picks species from the palette instead of a tree picker', () => {
     expect(profileFor('oak').species).toBe('oak')
     expect(resolveTreeChoice('https://example.com/tree-1', 'default')).toEqual({ species: 'cherry', habit: 'lush' })
+    expect(resolveTreeChoice('https://example.com/tree-1', 'lavender')).toEqual({ species: 'willow', habit: 'lush' })
     expect(resolveTreeChoice('https://example.com/tree-1', 'coral')).toEqual({ species: 'maple', habit: 'lush' })
-    expect(resolveTreeChoice('https://example.com/tree-1', 'snow')).toEqual({ species: 'oak', habit: 'sparse' })
+    expect(resolveTreeChoice('https://example.com/tree-1', 'gold')).toEqual({ species: 'apple', habit: 'lush' })
+    expect(resolveTreeChoice('https://example.com/tree-1', 'sky')).toEqual({ species: 'banana', habit: 'lush' })
+    expect(resolveTreeChoice('https://example.com/tree-1', 'snow')).toEqual({ species: 'pine', habit: 'sparse' })
   })
 
   it('is deterministic and produces continuous, populated crown layers', () => {
@@ -102,5 +105,33 @@ describe('species crown profiles', () => {
     expect(value.extent).toBeLessThanOrEqual(0.54)
     expect(value.middle - value.center).toBeGreaterThanOrEqual(0.04)
     expect(value.middle - value.outer).toBeGreaterThanOrEqual(0.08)
+  })
+
+  it('gives willow a hanging cascade with lowered tips', () => {
+    const payload = FIXTURES[2][0]
+    const grid = encodeGrid(payload)
+    const value = metrics(crownLayout(grid, hashString(payload), 'willow'), grid.size)
+    expect(value.extent).toBeGreaterThanOrEqual(0.38)
+    expect(value.extent).toBeLessThanOrEqual(0.52)
+    expect(value.middle - value.outer).toBeGreaterThanOrEqual(0.05)
+  })
+
+  it('gives pine a tall cone with a raised center', () => {
+    const payload = FIXTURES[1][0]
+    const grid = encodeGrid(payload)
+    const value = metrics(crownLayout(grid, hashString(payload), 'pine'), grid.size)
+    expect(value.extent).toBeGreaterThanOrEqual(0.52)
+    expect(value.extent).toBeLessThanOrEqual(0.7)
+    expect(value.center - value.outer).toBeGreaterThanOrEqual(0.1)
+  })
+
+  it('gives apple a rounded crown and banana a high fountain', () => {
+    const payload = FIXTURES[1][0]
+    const grid = encodeGrid(payload)
+    const apple = metrics(crownLayout(grid, hashString(payload), 'apple'), grid.size)
+    const banana = metrics(crownLayout(grid, hashString(payload), 'banana'), grid.size)
+    expect(apple.center - apple.outer).toBeGreaterThanOrEqual(0.08)
+    expect(banana.center - banana.outer).toBeGreaterThanOrEqual(0.08)
+    expect(banana.extent).toBeGreaterThanOrEqual(0.44)
   })
 })

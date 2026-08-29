@@ -20,10 +20,18 @@ describe('palette themes', () => {
   })
 
   it('maps each swatch to a matching species', () => {
-    expect(speciesForPalette('lavender')).toBe('cherry')
+    expect(speciesForPalette('lavender')).toBe('willow')
     expect(speciesForPalette('coral')).toBe('maple')
-    expect(speciesForPalette('gold')).toBe('maple')
-    expect(speciesForPalette('sky')).toBe('oak')
-    expect(speciesForPalette('snow')).toBe('oak')
+    expect(speciesForPalette('gold')).toBe('apple')
+    expect(speciesForPalette('sky')).toBe('banana')
+    expect(speciesForPalette('snow')).toBe('pine')
+  })
+
+  it('puts blossom or fruit on the apple tree by season', () => {
+    expect(ornamentOf('spring', 'gold')).toBe('blossom')
+    expect(ornamentOf('summer', 'gold')).toBe('fruit')
+    expect(ornamentOf('autumn', 'gold')).toBe('fruit')
+    expect(ornamentOf('summer', 'sky')).toBe('fruit')
+    expect(ornamentOf('spring', 'sky')).toBe('none')
   })
 })

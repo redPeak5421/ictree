@@ -13,6 +13,7 @@ import {
   CORNER_MODULES,
   crownLayout,
   isCornerCell,
+  leafShapeFor,
   profileFor,
   type CrownLayer,
   type TreeHabit,
@@ -253,9 +254,11 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     seeds.push({ x: 0, y: (trunkH * i) / trunkSteps, z: 0, parent: i - 1, depth: i })
   }
   const top = seeds.length - 1
-  const sectors = species === 'maple' ? 6 : species === 'cherry' ? 5 : 5
+  const sectors = species === 'pine' ? 7 : species === 'maple' || species === 'apple' ? 6 : species === 'banana' ? 4 : 5
   const mass = sectorMass(grid, sectors)
-  const limbLen = island * (species === 'oak' ? 0.21 : species === 'cherry' ? 0.19 : 0.16)
+  const limbLen =
+    island *
+    (species === 'oak' ? 0.21 : species === 'cherry' || species === 'willow' ? 0.19 : species === 'pine' ? 0.12 : species === 'banana' ? 0.14 : 0.16)
   for (let s = 0; s < sectors; s++) {
     const weight = 0.7 + mass[s]! * 0.3
     const yaw = (s / sectors) * Math.PI * 2 + reader.range(-0.35, 0.35)
@@ -352,7 +355,7 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     return v < 0.22 ? 3 : v < 0.48 ? 0 : v < 0.74 ? 1 : 2
   }
   const leaves: LeafInstance[] = []
-  const detailShape: LeafShape = species
+  const detailShape: LeafShape = leafShapeFor(species)
   const detailSlots = new Set([5, 6, 7])
   const leanFor = (layer: CrownLayer) => (layer === 'low' ? 0.34 : layer === 'middle' ? 0.28 : 0.22)
   for (const { point, at } of owners) {

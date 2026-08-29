@@ -61,6 +61,29 @@ export function petalTexture(): CanvasTexture {
   return petal
 }
 
+const fruits: Partial<Record<'round' | 'long', CanvasTexture>> = {}
+
+/** Apple / maple fruit is a disk; banana fruit is a long lozenge. */
+export function fruitTexture(kind: 'round' | 'long' = 'round'): CanvasTexture {
+  const found = fruits[kind]
+  if (found) return found
+  const size = 64
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const g = canvas.getContext('2d')
+  const texture = new CanvasTexture(canvas)
+  fruits[kind] = texture
+  if (!g) return texture
+  g.fillStyle = '#ffffff'
+  g.beginPath()
+  if (kind === 'long') g.ellipse(size / 2, size / 2, size * 0.16, size * 0.42, 0.45, 0, Math.PI * 2)
+  else g.ellipse(size / 2, size / 2, size * 0.3, size * 0.34, 0, 0, Math.PI * 2)
+  g.fill()
+  texture.colorSpace = SRGBColorSpace
+  return texture
+}
+
 const vegetation = new Map<string, CanvasTexture>()
 
 /** Procedural blade, broad-leaf, and seed-head cutouts for living ground cover. */
