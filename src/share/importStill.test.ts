@@ -9,11 +9,11 @@ import {
 import { readStillFile, STILL_ERROR } from './importStill'
 import { frameStillPayload } from './stillEncode'
 
-const SEARCH = '?u=https://example.com/a%20b&s=spring&p=coral'
+const SEARCH = '?u=https://example.com/a%20b&s=spring&t=maple'
 const STATE = {
   url: 'https://example.com/a b',
   season: 'spring',
-  palette: 'coral',
+  tree: 'maple',
   locked: false,
   mode: 'create',
 } as const

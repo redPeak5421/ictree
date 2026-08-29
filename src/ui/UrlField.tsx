@@ -1,4 +1,7 @@
+import { useT } from '../i18n/useLocale'
+
 export function UrlField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const t = useT()
   return (
     <input
       className="url-field"
@@ -7,7 +10,7 @@ export function UrlField({ value, onChange }: { value: string; onChange: (value:
       autoCapitalize="off"
       autoCorrect="off"
       spellCheck={false}
-      aria-label="Text or URL"
+      aria-label={t.textOrUrl}
       value={value}
       onChange={(event) => onChange(event.target.value)}
     />

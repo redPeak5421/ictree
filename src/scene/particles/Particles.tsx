@@ -4,7 +4,8 @@ import { InstancedMesh, MeshBasicMaterial, Object3D } from 'three'
 import { sceneryOpacity } from '../view'
 import type { SceneRef } from '../sceneState'
 import { islandExtent } from '../tree'
-import { leafTexture, petalTexture } from '../leafTexture'
+import { leafTexture } from '../leafTexture'
+import { leafShapeFor, type TreeSpecies } from '../treeSpecies'
 import type { ModuleGrid } from '../../qr/types'
 import { createFallingLeaves, stepFallingLeaves } from './leaves'
 import { createPetals, stepPetals } from './petals'
@@ -16,10 +17,15 @@ export function Particles({
   grid,
   scene,
   reduced,
+  species,
+  raining,
 }: {
   grid: ModuleGrid
   scene: SceneRef
   reduced: boolean
+  species: TreeSpecies
+  /** Rain is weather, chosen by the person, not by the season. */
+  raining: boolean
 }) {
   const island = islandExtent(grid.size)
   const rainRef = useRef<InstancedMesh>(null)
@@ -28,8 +34,9 @@ export function Particles({
   const rainMat = useRef<MeshBasicMaterial>(null)
   const petalMat = useRef<MeshBasicMaterial>(null)
   const leafMat = useRef<MeshBasicMaterial>(null)
-  const map = useMemo(() => leafTexture(), [])
-  const petalMap = useMemo(() => petalTexture(), [])
+  const map = useMemo(() => leafTexture(leafShapeFor(species)), [species])
+  // What drifts down in spring is the tree's own thing: cherry blossoms, else its young leaf.
+  const petalMap = useMemo(() => leafTexture(species === 'cherry' ? 'blossom' : leafShapeFor(species)), [species])
   const rain = useMemo(() => createRain(380, island, 11), [island])
   const petals = useMemo(() => createPetals(120, island, 22), [island])
   const falling = useMemo(() => createFallingLeaves(44, island, 33), [island])
@@ -44,10 +51,10 @@ export function Particles({
     const leafMesh = leafRef.current
 
     if (rainMesh) {
-      const on = season === 'autumn' && opacity > 0.01
+      const on = raining && opacity > 0.01
       const mat = rainMat.current
       if (mat) {
-        mat.opacity = season === 'autumn' ? opacity * 0.5 : 0
+        mat.opacity = raining ? opacity * 0.5 : 0
         mat.visible = on
       }
       if (on && !reduced) {
@@ -67,7 +74,7 @@ export function Particles({
       const on = season === 'spring' && opacity > 0.01
       const mat = petalMat.current
       if (mat) {
-        mat.color.set(colors.accent)
+        mat.color.set(species === 'cherry' ? colors.accent : colors.foliageVar)
         mat.opacity = season === 'spring' ? opacity : 0
         mat.visible = on
       }
@@ -76,7 +83,7 @@ export function Particles({
         petals.forEach((petal, i) => {
           dummy.position.set(petal.x, petal.y, petal.z)
           dummy.rotation.set(petal.spin, petal.phase, petal.spin * 0.4)
-          dummy.scale.setScalar(0.85)
+          dummy.scale.setScalar(species === 'cherry' ? 0.55 : 0.6)
           dummy.updateMatrix()
           petalMesh.setMatrixAt(i, dummy.matrix)
         })
@@ -113,7 +120,7 @@ export function Particles({
         <meshBasicMaterial ref={rainMat} color="#b9c6d0" transparent depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={petalRef} args={[undefined, undefined, petals.length]} frustumCulled={false}>
-        <planeGeometry args={[1, 1.35]} />
+        <planeGeometry args={[1, 1]} />
         <meshBasicMaterial ref={petalMat} map={petalMap} transparent alphaTest={0.4} depthWrite={false} side={2} />
       </instancedMesh>
       <instancedMesh ref={leafRef} args={[undefined, undefined, falling.length]} frustumCulled={false}>

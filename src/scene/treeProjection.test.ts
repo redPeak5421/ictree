@@ -7,6 +7,7 @@ import { vegetationOutline } from './grassLayout'
 import { silhouette } from './leafShape'
 import { colorsOf, type Season } from './palettes'
 import { buildTree, type LeafInstance } from './tree'
+import { TREE_IDS } from './treeSpecies'
 import {
   projectLeafOutline,
   projectVegetationOutline,
@@ -86,26 +87,35 @@ describe('generated tree projection', () => {
     }
   })
 
-  it('meets dark coverage and light contamination bounds from actual leaves', () => {
+  it('meets dark coverage and light contamination bounds from actual leaves of every tree', () => {
     const payloads = [...SPECIES_FIXTURES.map(([payload]) => payload), ...VERSION_FIXTURES.map(([payload]) => payload)]
-    const allStats: ReturnType<typeof projectionStats>[] = []
+    const failures: string[] = []
     for (const payload of new Set(payloads)) {
-      const { grid, rig } = rigFor(payload)
-      const projection = rasterTreeProjection(grid, rig, {
-        modulePx: 16,
-        quiet: 4,
-        colors: colorsOf('autumn', 'default'),
-      })
-      const stats = projectionStats(grid, projection)
-      allStats.push(stats)
+      const grid = encodeGrid(payload)
+      for (const species of TREE_IDS) {
+        const rig = buildTree(grid, hashString(payload), { species })
+        const projection = rasterTreeProjection(grid, rig, {
+          modulePx: 16,
+          quiet: 4,
+          colors: colorsOf('autumn', species),
+        })
+        const stats = projectionStats(grid, projection)
+        const bad =
+          stats.darkMean < 0.91 ||
+          stats.darkMin < 0.8 ||
+          stats.finderMean < 0.93 ||
+          stats.lightMean > 0.1 ||
+          stats.lightMax > 0.25 ||
+          !stats.lightCentersClean
+        if (bad) {
+          failures.push(
+            `v${grid.version} ${species}: darkMean=${stats.darkMean.toFixed(3)} darkMin=${stats.darkMin.toFixed(3)} lightMean=${stats.lightMean.toFixed(3)} lightMax=${stats.lightMax.toFixed(3)} centers=${stats.lightCentersClean}`,
+          )
+        }
+      }
     }
-    expect(Math.min(...allStats.map((stats) => stats.darkMean))).toBeGreaterThanOrEqual(0.91)
-    expect(Math.min(...allStats.map((stats) => stats.darkMin))).toBeGreaterThanOrEqual(0.8)
-    expect(Math.min(...allStats.map((stats) => stats.finderMean))).toBeGreaterThanOrEqual(0.93)
-    expect(Math.max(...allStats.map((stats) => stats.lightMean))).toBeLessThanOrEqual(0.1)
-    expect(Math.max(...allStats.map((stats) => stats.lightMax))).toBeLessThanOrEqual(0.25)
-    expect(allStats.every((stats) => stats.lightCentersClean)).toBe(true)
-  }, 30_000)
+    expect(failures).toEqual([])
+  }, 180_000)
 
   it('decodes every required species, season, and output size', () => {
     const failures: string[] = []
@@ -120,7 +130,7 @@ describe('generated tree projection', () => {
         const projection = rasterTreeProjection(grid, rig, {
           modulePx: 16,
           quiet: 4,
-          colors: colorsOf(season, 'default'),
+          colors: colorsOf(season, 'cherry'),
         })
         for (const size of [220, 320, 480, 600, 700, 900, 1100]) {
           const image = resampleProjection(projection, size)
@@ -131,4 +141,32 @@ describe('generated tree projection', () => {
     }
     expect(failures).toEqual([])
   }, 60_000)
+
+  it('decodes every plantable tree in every season and at every code size', () => {
+    const failures: string[] = []
+    const cases: [string, number[]][] = [
+      [VERSION_FIXTURES[0][0], [320, 700]],
+      [VERSION_FIXTURES[1][0], [320, 700]],
+      [VERSION_FIXTURES[2][0], [480, 900]],
+    ]
+    for (const [payload, sizes] of cases) {
+      const grid = encodeGrid(payload)
+      for (const species of TREE_IDS) {
+        const rig = buildTree(grid, hashString(payload), { species })
+        for (const season of ['spring', 'summer', 'autumn'] as const) {
+          const projection = rasterTreeProjection(grid, rig, {
+            modulePx: 16,
+            quiet: 4,
+            colors: colorsOf(season, species),
+          })
+          for (const size of sizes) {
+            const image = resampleProjection(projection, size)
+            const decoded = jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' })?.data
+            if (decoded !== payload) failures.push(`v${grid.version}:${species}:${season}:${size}`)
+          }
+        }
+      }
+    }
+    expect(failures).toEqual([])
+  }, 300_000)
 })

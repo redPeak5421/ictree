@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
+import { useT } from '../i18n/useLocale'
 import { rasterQr } from '../qr/raster'
 import { QUIET_ZONE, type ModuleGrid } from '../qr/types'
 import type { SceneColors } from '../scene/palettes'
 
 export function QrFallback({ grid, colors }: { grid: ModuleGrid; colors: SceneColors }) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const t = useT()
 
   useEffect(() => {
     const canvas = ref.current
@@ -23,7 +25,7 @@ export function QrFallback({ grid, colors }: { grid: ModuleGrid; colors: SceneCo
 
   return (
     <div className="qr-fallback">
-      <p className="qr-fallback-note">WebGL is unavailable. You can still download a scannable QR.</p>
+      <p className="qr-fallback-note">{t.webglUnavailable}</p>
       <canvas ref={ref} className="qr-fallback-canvas" />
     </div>
   )

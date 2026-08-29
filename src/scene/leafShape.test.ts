@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mulberry32 } from './hash'
 import {
+  areaOfOutline,
   boundsOfOutline,
   fitScale,
   halfExtents,
@@ -19,6 +20,32 @@ describe('leaf silhouettes', () => {
       expect(outline.every(([x, y]) => Math.abs(x) <= 0.5 && Math.abs(y) <= 0.5)).toBe(true)
       expect(boundsOfOutline(outline)).toEqual(halfExtents(shape))
     }
+  })
+
+  it('keeps every canopy cluster nearly as solid as the ovate it replaces', () => {
+    const ovate = areaOfOutline(silhouette('ovate'))
+    for (const shape of ['cherryCanopy', 'appleCanopy', 'mapleCanopy', 'pineCanopy', 'willowCanopy'] as const) {
+      const ratio = areaOfOutline(silhouette(shape)) / ovate
+      expect(ratio).toBeGreaterThanOrEqual(0.84)
+      expect(ratio).toBeLessThan(1)
+    }
+    expect(areaOfOutline(silhouette('pine')) / ovate).toBeLessThan(0.2)
+    expect(areaOfOutline(silhouette('willow')) / ovate).toBeLessThan(0.35)
+  })
+
+  it('keeps the blossom inside the cherry leaf box so spring swaps textures without moving bounds', () => {
+    const [cx, cy] = halfExtents('cherry')
+    const [bx, by] = halfExtents('blossom')
+    expect(bx).toBeLessThanOrEqual(cx + 1e-9)
+    expect(by).toBeLessThanOrEqual(cy + 1e-9)
+  })
+
+  it('gives the maple five pointed lobes with deep sinuses', () => {
+    const outline = silhouette('maple')
+    const radii = outline.map(([x, y]) => Math.hypot(x, y))
+    const peaks = radii.filter((r, i) => r > radii[(i + outline.length - 1) % outline.length]! && r >= radii[(i + 1) % outline.length]!)
+    expect(peaks.length).toBe(5)
+    expect(Math.min(...radii) / Math.max(...radii)).toBeLessThan(0.35)
   })
 
   it('maps every supported shape to its renderer texture kind', () => {

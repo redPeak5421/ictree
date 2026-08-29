@@ -21,6 +21,8 @@ body,
   background: var(--bg);
 }
 
+/* ---------- stage ---------- */
+
 .stage {
   position: relative;
   min-height: 0;
@@ -45,67 +47,199 @@ body,
   top: 14px;
   left: 18px;
   z-index: 2;
-  font-size: 13px;
-  letter-spacing: 0.14em;
-  text-transform: lowercase;
+  font: italic 17px/1 var(--font-display);
+  letter-spacing: 0.02em;
   color: var(--muted);
   pointer-events: none;
 }
 
+/* The hint belongs to the canvas it explains, so it floats over the stage
+   instead of taking a row of the bench below. */
 .hint-pill {
-  align-self: center;
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  z-index: 2;
+  transform: translateX(-50%);
   border: 0;
-  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
   color: var(--muted);
   border-radius: var(--radius-pill);
   padding: 6px 14px;
   font: 12.5px/1.2 var(--font);
   cursor: pointer;
   white-space: nowrap;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
+
+/* ---------- bench ---------- */
 
 .chrome {
   width: min(620px, 100%);
   margin: 0 auto;
-  padding: 4px 16px max(12px, env(safe-area-inset-bottom));
+  padding: 2px 16px max(14px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+
+.top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.url-row,
-.season-row {
+.top-tools {
   display: flex;
-  gap: 8px;
   align-items: center;
+  gap: 6px;
+}
+
+.lang-select {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 36px;
+  padding: 0 26px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a7f74' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E")
+    no-repeat right 10px center;
+  color: var(--muted);
+  font: 13px/1 var(--font);
+  cursor: pointer;
+  transition: color var(--ease), border-color var(--ease);
+}
+
+.lang-select:hover {
+  color: var(--ink);
+}
+
+.mode-bar {
+  display: flex;
+  gap: 2px;
+  margin-left: -10px;
+}
+
+.mode-tab {
+  position: relative;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 500 14px/1 var(--font);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color var(--ease);
+}
+
+.mode-tab.is-selected {
+  color: var(--ink);
+}
+
+.mode-tab::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--share);
+  transform: scaleX(0);
+  transition: transform var(--ease);
+}
+
+.mode-tab.is-selected::after {
+  transform: scaleX(1);
+}
+
+/* Words and their lock share one card: the two things the tree is made of. */
+.field-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  transition: border-color var(--ease);
+}
+
+.field-card:focus-within {
+  border-color: #c9b9a4;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-card .field-row {
+  padding-right: 6px;
+}
+
+.field-row.is-secondary {
+  border-top: 1px solid var(--line);
+  padding-left: 14px;
+  color: var(--muted);
+}
+
+.field-row.is-note {
+  gap: 10px;
+}
+
+.field-icon {
+  flex: none;
 }
 
 .url-field {
   flex: 1;
-  height: 44px;
-  border-radius: var(--radius-input);
-  border: 1px solid var(--line);
-  background: var(--panel);
+  min-width: 0;
+  height: 46px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--ink);
   padding: 0 14px;
   font: 15px/1.2 var(--font);
   outline: none;
 }
 
-.url-field:focus {
+.url-field::placeholder {
+  color: var(--muted);
+}
+
+.field-row.is-secondary .url-field {
+  height: 40px;
+  padding-left: 0;
+  font-size: 13.5px;
+}
+
+.reveal-panel .url-field {
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-input);
+  background: var(--panel);
+}
+
+.reveal-panel .url-field:focus {
   border-color: #c9b9a4;
 }
 
 .share {
   position: relative;
+  flex: none;
 }
 
 .share-btn,
 .icon-btn {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border: 0;
-  border-radius: var(--radius-input);
+  border-radius: 12px;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -117,15 +251,26 @@ body,
 }
 
 .icon-btn {
-  background: var(--panel);
-  color: var(--ink);
+  background: transparent;
+  color: var(--muted);
   border: 1px solid var(--line);
+  transition: color var(--ease), border-color var(--ease);
+}
+
+.icon-btn:hover {
+  color: var(--ink);
+}
+
+.icon-btn.is-on {
+  color: var(--ink);
+  background: var(--selected);
+  border-color: transparent;
 }
 
 .share-menu {
   position: absolute;
   right: 0;
-  bottom: 52px;
+  bottom: 44px;
   min-width: 168px;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -156,17 +301,114 @@ body,
   background: var(--selected);
 }
 
-.season-bar {
+.share-group {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+.share-group + .share-group {
+  border-top: 1px solid var(--line);
+  margin-top: 2px;
+}
+
+.share-group-title {
+  margin: 0;
+  padding: 6px 10px 2px;
+  color: var(--muted);
+  font: 500 11px/1 var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* One-of-three state: a single joined control, not three loose pills. */
+.segmented {
+  display: flex;
+  padding: 3px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+}
+
+.segment {
   flex: 1;
+  height: 34px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: 13.5px/1 var(--font);
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+}
+
+.segment.is-selected {
+  background: var(--selected);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(61, 52, 44, 0.08);
+}
+
+/* Plant tags. Each chip is tinted by its own tree's colour for the season
+   in force, so the row reads as a legend of what each choice would grow. */
+.tree-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
 }
 
-.mode-bar {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+.tree-chip {
+  height: 58px;
+  padding: 0 2px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font: italic 12.5px/1 var(--font-display);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: border-color var(--ease), background var(--ease), color var(--ease);
+}
+
+.tree-chip:hover {
+  border-color: color-mix(in srgb, var(--leaf) 55%, var(--line));
+}
+
+.tree-chip.is-selected {
+  border-color: var(--leaf);
+  background: color-mix(in srgb, var(--leaf) 14%, var(--panel));
+  color: var(--ink);
+}
+
+.leaf-glyph {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.leaf-fill {
+  fill: var(--leaf);
+  opacity: 0.55;
+  transition: fill 280ms ease, opacity var(--ease);
+}
+
+.tree-chip.is-selected .leaf-fill {
+  opacity: 1;
+}
+
+.leaf-fruit,
+.leaf-blossom {
+  fill: var(--leaf-accent);
+  stroke: var(--panel);
+  stroke-width: 1.2;
 }
 
 .reveal-panel {
@@ -188,43 +430,19 @@ body,
   font: 13px/1.4 var(--font);
 }
 
-.season-btn {
-  height: 40px;
+.action-btn {
+  height: 42px;
   border: 0;
-  border-radius: 12px;
-  background: var(--panel);
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font: 13.5px/1 var(--font);
-  cursor: pointer;
-}
-
-.season-btn.is-selected {
+  border-radius: var(--radius-input);
   background: var(--selected);
   color: var(--ink);
-}
-
-.palette-row {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-}
-
-.swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  padding: 0;
+  font: 500 14px/1 var(--font);
   cursor: pointer;
 }
 
-.swatch.is-selected {
-  border-color: var(--ink);
-  box-shadow: 0 0 0 2px var(--bg);
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .error {
@@ -260,8 +478,62 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
+.field-card .url-field:focus-visible {
+  outline: none;
+}
+
+/* Wide screens: the bench becomes a side panel and the grove takes the rest. */
+@media (min-width: 900px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr) 400px;
+    grid-template-rows: 1fr;
+  }
+
+  .stage {
+    height: 100dvh;
+  }
+
+  .chrome {
+    width: 100%;
+    max-height: 100dvh;
+    overflow-y: auto;
+    margin: 0;
+    padding: 20px 22px max(20px, env(safe-area-inset-bottom)) 8px;
+    justify-content: center;
+    gap: 12px;
+    border-left: 1px solid var(--line);
+    background: color-mix(in srgb, var(--panel) 45%, var(--bg));
+  }
+
+  .hint-pill {
+    bottom: 22px;
+  }
+
+  .tree-chip {
+    height: 64px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr) 440px;
+  }
+
+  .chrome {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+}
+
+@media (max-width: 380px) {
+  .segment span + span {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

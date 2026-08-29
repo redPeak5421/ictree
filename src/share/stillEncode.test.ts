@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseShareParams } from './params'
 import { frameStillPayload, unframeStillPayload } from './stillEncode'
 
-const SEARCH = '?u=https://example.com/a%20b&s=spring&p=coral'
+const SEARCH = '?u=https://example.com/a%20b&s=spring&t=maple'
 
 describe('still payload framing', () => {
   it('frames and unframes the share search', () => {
@@ -11,7 +11,7 @@ describe('still payload framing', () => {
     expect(parseShareParams(SEARCH)).toEqual({
       url: 'https://example.com/a b',
       season: 'spring',
-      palette: 'coral',
+      tree: 'maple',
       locked: false,
       mode: 'create',
     })

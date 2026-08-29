@@ -6,7 +6,7 @@ import { colorsOf } from '../scene/palettes'
 
 function decode(payload: string, season: 'spring' | 'summer' | 'autumn' = 'autumn') {
   const grid = encodeGrid(payload)
-  const { data, width, height } = rasterQr(grid, colorsOf(season, 'default'), {
+  const { data, width, height } = rasterQr(grid, colorsOf(season, 'cherry'), {
     modulePx: 10,
     quiet: 4,
     morphT: 1,
@@ -32,7 +32,7 @@ describe('rasterQr scanability', () => {
 
   it('keeps finder modules darker than light modules', () => {
     const grid = encodeGrid('https://example.com/')
-    const colors = colorsOf('autumn', 'default')
+    const colors = colorsOf('autumn', 'cherry')
     const { data, width } = rasterQr(grid, colors, { modulePx: 8, quiet: 4, morphT: 1 })
     const light = grid.cells.find((cell) => !cell.dark)
     if (!light) throw new Error('expected a light module')
@@ -52,7 +52,7 @@ describe('rasterQr sizing', () => {
     const grid = encodeGrid(payload)
     const n = grid.size + 4 * 2
     const modulePx = Math.max(8, Math.floor(1024 / n))
-    const { width } = rasterQr(grid, colorsOf('autumn', 'default'), {
+    const { width } = rasterQr(grid, colorsOf('autumn', 'cherry'), {
       modulePx,
       quiet: 4,
       morphT: 1,

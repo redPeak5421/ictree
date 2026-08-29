@@ -3,7 +3,24 @@
  * Coordinates live in the unit plane used by Three.js PlaneGeometry.
  */
 
-export type LeafShape = 'ovate' | 'oak' | 'maple' | 'cherry' | 'willow' | 'pine' | 'apple' | 'banana'
+export type LeafShape =
+  | 'ovate'
+  | 'oak'
+  | 'maple'
+  | 'cherry'
+  | 'willow'
+  | 'pine'
+  | 'apple'
+  | 'banana'
+  | 'blossom'
+  | 'pineTwig'
+  | 'willowWithe'
+  | 'cherryCanopy'
+  | 'appleCanopy'
+  | 'mapleCanopy'
+  | 'pineCanopy'
+  | 'willowCanopy'
+  | 'appleHeap'
 
 export const LEAF_SHAPES: readonly LeafShape[] = [
   'ovate',
@@ -14,6 +31,15 @@ export const LEAF_SHAPES: readonly LeafShape[] = [
   'pine',
   'apple',
   'banana',
+  'blossom',
+  'pineTwig',
+  'willowWithe',
+  'cherryCanopy',
+  'appleCanopy',
+  'mapleCanopy',
+  'pineCanopy',
+  'willowCanopy',
+  'appleHeap',
 ]
 /** Compatibility for the pre-species tree builder; remove once it passes shapes directly. */
 export type Silhouette = LeafShape | 'leaf'
@@ -40,12 +66,53 @@ function superellipse(count: number, halfX: number, halfY: number, exponent: num
   })
 }
 
-function mapleOutline(): readonly Point2[] {
-  const count = 80
+/**
+ * A broadleaf with pointed ends: an ellipse whose width pinches toward both
+ * tips, optionally serrated. Wide enough in the middle to carry QR coverage.
+ */
+function pointedLeaf(
+  count: number,
+  halfX: number,
+  halfY: number,
+  pinch: number,
+  ripple = 0,
+  teeth = 0,
+): readonly Point2[] {
   return Array.from({ length: count }, (_, index) => {
     const angle = (index / count) * Math.PI * 2
-    const lobe = ((Math.cos(5 * angle) + 1) / 2) ** 1.7
-    const radius = 0.49 * (0.5 + 0.5 * lobe) * (0.88 + 0.12 * Math.cos(angle))
+    const sin = Math.sin(angle)
+    const cos = Math.cos(angle)
+    const edge = 1 - ripple + ripple * ((Math.cos(teeth * angle) + 1) / 2)
+    const width = halfX * (1 - pinch * Math.abs(cos) ** 2.2)
+    return [sin * width * edge, cos * halfY * edge] as const
+  })
+}
+
+/**
+ * A palmate maple leaf: five pointed lobes cut by deep sinuses, the two
+ * lower lobes smaller than the three upper ones, the top lobe on +y.
+ */
+function mapleOutline(): readonly Point2[] {
+  const count = 160
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (index / count) * Math.PI * 2
+    const phase = ((angle / (Math.PI * 2)) * 5 + 0.5) % 1
+    const tip = 1 - Math.abs(phase - 0.5) * 2
+    // Sharp tips, deep sinuses: the lobe profile is peaked, not rounded.
+    const radius = 0.49 * (0.22 + 0.78 * tip ** 1.7) * (0.82 + 0.18 * Math.cos(angle))
+    return [Math.sin(angle) * radius, Math.cos(angle) * radius] as const
+  })
+}
+
+/** A five-petal cherry blossom, each petal notched at its tip. Fits inside the cherry leaf box. */
+function blossomOutline(): readonly Point2[] {
+  const count = 150
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (index / count) * Math.PI * 2
+    const petal = (Math.cos(5 * angle) + 1) / 2
+    // Broad petals that separate clearly, each with a heart-shaped notch.
+    const notch = 1 - 0.2 * petal ** 12
+    const radius = 0.4 * (0.3 + 0.7 * petal ** 0.4) * notch
     return [Math.sin(angle) * radius, Math.cos(angle) * radius] as const
   })
 }
@@ -69,15 +136,43 @@ function pineOutline(): readonly Point2[] {
   })
 }
 
+/**
+ * A cluster of a species' leaves seen as one mass: the near-square ovate
+ * footprint that carries QR coverage, with the species' edge character —
+ * serrations, lobes, bristles, hanging tips — as a shallow fringe. The
+ * fringe stays shallow on purpose: it is what the eye reads from the side,
+ * while the module underneath must still be filled from above.
+ */
+function clusterOutline(count: number, teeth: number, amp: number, power: number): readonly Point2[] {
+  const base = superellipse(count, 0.49, 0.49, 2.8)
+  return base.map(([x, y], index) => {
+    const angle = (index / count) * Math.PI * 2
+    const fringe = 1 - amp + amp * ((Math.cos(teeth * angle) + 1) / 2) ** power
+    return [x * fringe, y * fringe] as const
+  })
+}
+
 const OUTLINES: Record<LeafShape, readonly Point2[]> = {
   ovate: superellipse(64, 0.48, 0.49, 2.8),
   oak: oakOutline(),
   maple: mapleOutline(),
-  cherry: ellipse(56, 0.32, 0.49, 0.045, 14),
+  cherry: pointedLeaf(64, 0.4, 0.49, 0.45, 0.04, 14),
   willow: ellipse(48, 0.14, 0.49, 0.03, 8),
   pine: pineOutline(),
-  apple: ellipse(56, 0.38, 0.46, 0.03, 10),
+  apple: pointedLeaf(64, 0.45, 0.49, 0.35, 0.025, 10),
   banana: superellipse(48, 0.2, 0.49, 2.2),
+  blossom: blossomOutline(),
+  // Twig and withe are drawn inside these boxes by leafTexture; the box only
+  // bounds their footprint for fitScale.
+  pineTwig: ellipse(32, 0.3, 0.49),
+  willowWithe: ellipse(32, 0.12, 0.49),
+  cherryCanopy: clusterOutline(80, 16, 0.05, 1),
+  appleCanopy: clusterOutline(80, 10, 0.04, 1),
+  mapleCanopy: clusterOutline(80, 5, 0.075, 1.5),
+  pineCanopy: clusterOutline(90, 18, 0.075, 0.7),
+  willowCanopy: clusterOutline(81, 9, 0.05, 1.2),
+  // Same footprint as the apple cluster: a fruit module swaps texture, not bounds.
+  appleHeap: clusterOutline(80, 10, 0.04, 1),
 }
 
 function normalizedShape(shape: Silhouette): LeafShape {
@@ -103,16 +198,20 @@ export function boundsOfOutline(outline: readonly Point2[]): [number, number] {
   return [halfX, halfY]
 }
 
-const EXTENTS: Record<LeafShape, [number, number]> = {
-  ovate: boundsOfOutline(OUTLINES.ovate),
-  oak: boundsOfOutline(OUTLINES.oak),
-  maple: boundsOfOutline(OUTLINES.maple),
-  cherry: boundsOfOutline(OUTLINES.cherry),
-  willow: boundsOfOutline(OUTLINES.willow),
-  pine: boundsOfOutline(OUTLINES.pine),
-  apple: boundsOfOutline(OUTLINES.apple),
-  banana: boundsOfOutline(OUTLINES.banana),
+/** Area of a simple outline (shoelace), for coverage comparisons in tests. */
+export function areaOfOutline(outline: readonly Point2[]): number {
+  let sum = 0
+  for (let i = 0; i < outline.length; i++) {
+    const [x0, y0] = outline[i]!
+    const [x1, y1] = outline[(i + 1) % outline.length]!
+    sum += x0 * y1 - x1 * y0
+  }
+  return Math.abs(sum) / 2
 }
+
+const EXTENTS = Object.fromEntries(
+  LEAF_SHAPES.map((shape) => [shape, boundsOfOutline(OUTLINES[shape])]),
+) as Record<LeafShape, [number, number]>
 
 export function halfExtents(shape: Silhouette = 'ovate'): [number, number] {
   return EXTENTS[normalizedShape(shape)]

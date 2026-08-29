@@ -6,13 +6,13 @@ import type { ModuleGrid } from '../qr/types'
 import {
   colorsOf,
   lerpColors,
-  type PaletteId,
   type SceneColors,
   type Season,
 } from '../scene/palettes'
 import { easeInOutCubic, isOverhead, OVERHEAD, SEASON_MS, squareYaw } from '../scene/view'
 import type { SceneState } from '../scene/sceneState'
 import { VIEW_PITCH, VIEW_YAW } from '../scene/tree'
+import type { TreeSpecies } from '../scene/treeSpecies'
 import { buildShareSearch, parseShareParams, type AppMode, type ShareState } from '../share/params'
 import { isWrapped, wrapSecret } from '../share/secret'
 
@@ -44,17 +44,18 @@ export function useTreeState() {
   const [payload, setPayload] = useState(startPayload)
   const [locked, setLocked] = useState(startLocked)
   const [season, setSeason] = useState<Season>(initial.season)
-  const [palette, setPalette] = useState<PaletteId>(initial.palette)
+  const [tree, setTree] = useState<TreeSpecies>(initial.tree)
   const [muted, setMuted] = useState(true)
+  const [rain, setRain] = useState(false)
   const [overhead, setOverhead] = useState(false)
   const [error, setError] = useState<string | null>(payloadError(startLocked ? DEFAULT_PAYLOAD : startPayload))
   const [grid, setGrid] = useState<ModuleGrid>(() => encodeGrid(startPayload))
   const [webgl] = useState(detectWebgl)
   const [reduced, setReduced] = useState(prefersReducedMotion)
-  const [colors, setColors] = useState<SceneColors>(() => colorsOf(initial.season, initial.palette))
+  const [colors, setColors] = useState<SceneColors>(() => colorsOf(initial.season, initial.tree))
 
   const scene = useRef<SceneState>({
-    colors: colorsOf(initial.season, initial.palette),
+    colors: colorsOf(initial.season, initial.tree),
     season: initial.season,
     yaw: VIEW_YAW,
     pitch: VIEW_PITCH,
@@ -63,6 +64,8 @@ export function useTreeState() {
     dragging: false,
     pitchTarget: null,
     yawTarget: null,
+    zoom: 1,
+    zoomTarget: null,
   })
 
   useEffect(() => {
@@ -105,15 +108,15 @@ export function useTreeState() {
   }, [mode, payload])
 
   useEffect(() => {
-    const search = buildShareSearch({ url: payload, season, palette, locked, mode })
+    const search = buildShareSearch({ url: payload, season, tree, locked, mode })
     const next = `${window.location.pathname}${search}`
     if (`${window.location.pathname}${window.location.search}` !== next) {
       history.replaceState(null, '', next)
     }
-  }, [payload, season, palette, locked, mode])
+  }, [payload, season, tree, locked, mode])
 
   useEffect(() => {
-    const target = colorsOf(season, palette)
+    const target = colorsOf(season, tree)
     setColors(target)
     scene.current.season = season
     const from = scene.current.colors
@@ -127,7 +130,7 @@ export function useTreeState() {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [season, palette, reduced])
+  }, [season, tree, reduced])
 
   useEffect(() => {
     setAmbienceSeason(season)
@@ -139,9 +142,12 @@ export function useTreeState() {
     const up = state.pitchTarget === OVERHEAD || (state.pitchTarget === null && isOverhead(heading))
     state.pitchTarget = up ? VIEW_PITCH : OVERHEAD
     state.yawTarget = up ? null : squareYaw(state.yaw)
+    if (!up) state.zoomTarget = 1
     state.spinYaw = 0
     state.spinPitch = 0
   }, [])
+
+  const toggleRain = useCallback(() => setRain((value) => !value), [])
 
   const toggleMuted = useCallback(() => {
     setMuted((value) => {
@@ -160,7 +166,7 @@ export function useTreeState() {
     setPassword('')
     setUrl(nextLocked ? DEFAULT_PAYLOAD : nextPayload)
     setSeason(next.season)
-    setPalette(next.palette)
+    setTree(next.tree)
     const cam = scene.current
     cam.pitch = VIEW_PITCH
     cam.yaw = VIEW_YAW
@@ -168,6 +174,8 @@ export function useTreeState() {
     cam.yawTarget = null
     cam.spinYaw = 0
     cam.spinPitch = 0
+    cam.zoom = 1
+    cam.zoomTarget = null
     setOverhead(false)
   }, [])
 
@@ -191,10 +199,12 @@ export function useTreeState() {
     locked,
     season,
     setSeason,
-    palette,
-    setPalette,
+    tree,
+    setTree,
     muted,
     toggleMuted,
+    rain,
+    toggleRain,
     overhead,
     setOverhead,
     toggleView,

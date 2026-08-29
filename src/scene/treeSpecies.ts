@@ -1,10 +1,29 @@
-import type { PaletteId } from './palettes'
 import { ISLAND_RIM, type ModuleCell, type ModuleGrid } from '../qr/types'
 import type { LeafShape } from './leafShape'
 import { hashString, mulberry32 } from './hash'
 
-export type TreeSpecies = 'oak' | 'maple' | 'cherry' | 'willow' | 'pine' | 'apple' | 'banana'
+export type TreeSpecies = 'cherry' | 'apple' | 'pine' | 'willow' | 'maple'
 export type CrownLayer = 'low' | 'middle' | 'high'
+
+export interface TreeKind {
+  id: TreeSpecies
+  label: string
+}
+
+/** The five trees a person can plant, in picker order. */
+export const TREE_KINDS: readonly TreeKind[] = [
+  { id: 'cherry', label: 'Cherry' },
+  { id: 'apple', label: 'Apple' },
+  { id: 'pine', label: 'Pine' },
+  { id: 'willow', label: 'Willow' },
+  { id: 'maple', label: 'Maple' },
+]
+
+export const TREE_IDS: readonly TreeSpecies[] = TREE_KINDS.map((kind) => kind.id)
+
+export function isTreeSpecies(value: string): value is TreeSpecies {
+  return (TREE_IDS as readonly string[]).includes(value)
+}
 
 export interface CrownPoint {
   cell: ModuleCell
@@ -38,41 +57,36 @@ export function isCornerCell(x: number, y: number, size: number): boolean {
 
 export type TreeHabit = 'lush' | 'sparse'
 
-export const PALETTE_SPECIES: Record<PaletteId, TreeSpecies> = {
-  default: 'cherry',
-  lavender: 'willow',
-  coral: 'maple',
-  gold: 'apple',
-  sky: 'banana',
-  snow: 'pine',
-}
-
-export function speciesForPalette(palette: PaletteId): TreeSpecies {
-  return PALETTE_SPECIES[palette]
-}
-
+/** The single leaf of a species: ground litter, particles, and the picker glyph. */
 export function leafShapeFor(species: TreeSpecies): LeafShape {
   return species
 }
 
-export function resolveTreeChoice(
-  _payload: string,
-  palette: PaletteId = 'default',
-): { species: TreeSpecies; habit: TreeHabit } {
-  return {
-    species: speciesForPalette(palette),
-    habit: palette === 'snow' ? 'sparse' : 'lush',
-  }
+/**
+ * The element the visible crown mass is made of. Broadleaves hang single
+ * leaves; a pine hangs twigs with needles along them; a willow hangs withes
+ * with leaflets down their length.
+ */
+export function fillerShapeFor(species: TreeSpecies): LeafShape {
+  if (species === 'pine') return 'pineTwig'
+  if (species === 'willow') return 'willowWithe'
+  return species
 }
 
-function oakHeight({ x, radius, angle, island, phases }: CrownSampleInput): number {
-  const xn = x / (island * 0.5)
-  const shoulder = 0.2 * Math.exp(-Math.pow((radius - 0.64) / 0.2, 2))
-  const lobes =
-    0.2 * Math.sin(3 * angle + phases[0]!) +
-    0.11 * Math.sin(5 * angle + phases[1]!)
-  const crownNoise = 0.06 * Math.sin(x * 0.55 + phases[2]!) * Math.cos(radius * 8 + phases[3]!)
-  return 0.46 * (1 - radius ** 1.35) + shoulder + lobes * (0.45 + radius * 0.55) + xn * 0.23 + crownNoise
+/**
+ * The shape the QR-coverage leaves are built from: a cluster of the species'
+ * leaves as one mass. A single needle, blade, or star cannot fill a module
+ * from above; the cluster can, and keeps the species' edge from the side.
+ */
+export function canopyShapeFor(species: TreeSpecies): LeafShape {
+  return `${species}Canopy`
+}
+
+export function resolveTreeChoice(
+  _payload: string,
+  tree: TreeSpecies = 'cherry',
+): { species: TreeSpecies; habit: TreeHabit } {
+  return { species: tree, habit: 'lush' }
 }
 
 function mapleHeight({ x, z, radius, angle, phases }: CrownSampleInput): number {
@@ -117,20 +131,7 @@ function appleHeight({ x, z, radius, angle, phases }: CrownSampleInput): number 
   return 0.9 * (1 - radius ** 1.5) + lobes + crownNoise
 }
 
-function bananaHeight({ radius, angle, phases }: CrownSampleInput): number {
-  const fountain = 1.14 * (1 - radius ** 0.82)
-  const lobes = 0.07 * Math.cos(3 * angle + phases[0]!)
-  return fountain + lobes
-}
-
 const PROFILES: Record<TreeSpecies, TreeSpeciesProfile> = {
-  oak: {
-    species: 'oak',
-    trunkRatio: 0.18,
-    verticalExtent: [0.36, 0.48],
-    limbPitch: [0.42, 0.78],
-    heightAt: oakHeight,
-  },
   maple: {
     species: 'maple',
     trunkRatio: 0.22,
@@ -165,13 +166,6 @@ const PROFILES: Record<TreeSpecies, TreeSpeciesProfile> = {
     verticalExtent: [0.42, 0.56],
     limbPitch: [0.36, 0.7],
     heightAt: appleHeight,
-  },
-  banana: {
-    species: 'banana',
-    trunkRatio: 0.3,
-    verticalExtent: [0.44, 0.58],
-    limbPitch: [0.28, 0.58],
-    heightAt: bananaHeight,
   },
 }
 

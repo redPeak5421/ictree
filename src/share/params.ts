@@ -1,4 +1,5 @@
-import type { PaletteId, Season } from '../scene/palettes'
+import type { Season } from '../scene/palettes'
+import { isTreeSpecies, type TreeSpecies } from '../scene/treeSpecies'
 import { isWrapped } from './secret'
 
 export type AppMode = 'create' | 'reveal'
@@ -6,18 +7,31 @@ export type AppMode = 'create' | 'reveal'
 export interface ShareState {
   url: string
   season: Season
-  palette: PaletteId
+  tree: TreeSpecies
   locked: boolean
   mode: AppMode
 }
 
 const SEASONS: Season[] = ['spring', 'summer', 'autumn']
-const PALETTES: PaletteId[] = ['default', 'lavender', 'coral', 'gold', 'sky', 'snow']
+
+/** Links minted while swatches picked the tree still open on the tree they showed. */
+const LEGACY_PALETTE_TREE: Record<string, TreeSpecies> = {
+  default: 'cherry',
+  lavender: 'willow',
+  coral: 'maple',
+  gold: 'apple',
+  sky: 'willow',
+  snow: 'pine',
+}
+
+function parseTree(tree: string, palette: string): TreeSpecies {
+  if (isTreeSpecies(tree)) return tree
+  return LEGACY_PALETTE_TREE[palette] ?? 'cherry'
+}
 
 export function parseShareParams(search: string): ShareState {
   const q = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
   const seasonRaw = q.get('s') ?? ''
-  const paletteRaw = q.get('p') ?? ''
   const url = q.get('u') ?? ''
   const locked = q.get('e') === '1' || isWrapped(url)
   const modeRaw = q.get('m')
@@ -25,7 +39,7 @@ export function parseShareParams(search: string): ShareState {
   return {
     url,
     season: SEASONS.includes(seasonRaw as Season) ? (seasonRaw as Season) : 'autumn',
-    palette: PALETTES.includes(paletteRaw as PaletteId) ? (paletteRaw as PaletteId) : 'default',
+    tree: parseTree(q.get('t') ?? '', q.get('p') ?? ''),
     locked,
     mode,
   }
@@ -35,7 +49,7 @@ export function buildShareSearch(state: ShareState): string {
   const q = new URLSearchParams()
   q.set('u', state.url)
   q.set('s', state.season)
-  q.set('p', state.palette)
+  q.set('t', state.tree)
   if (state.locked) q.set('e', '1')
   if (state.mode === 'reveal') q.set('m', 'r')
   return `?${q.toString()}`

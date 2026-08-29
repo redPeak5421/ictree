@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n/useLocale'
 import type { ModuleGrid } from '../qr/types'
 import type { SceneColors } from '../scene/palettes'
 import { scanGrovePayload } from '../share/scanGrove'
@@ -13,6 +14,7 @@ export function RevealPanel({
   colors: SceneColors
   locked: boolean
 }) {
+  const t = useT()
   const [password, setPassword] = useState('')
   const [note, setNote] = useState<string | null>(null)
   const [revealed, setRevealed] = useState<string | null>(null)
@@ -24,7 +26,7 @@ export function RevealPanel({
     try {
       const payload = scanGrovePayload(grid, colors)
       if (!payload) {
-        setNote('Hold the tree from above, then scan.')
+        setNote(t.holdOverhead)
         return
       }
       if (!isWrapped(payload) && !locked) {
@@ -32,12 +34,12 @@ export function RevealPanel({
         return
       }
       if (!password) {
-        setNote('Enter the password, then scan.')
+        setNote(t.enterPassword)
         return
       }
       const url = await unwrapSecret(isWrapped(payload) ? payload : grid.payload, password)
       if (!url) {
-        setNote('Wrong password.')
+        setNote(t.wrongPassword)
         return
       }
       setRevealed(url)
@@ -53,14 +55,14 @@ export function RevealPanel({
           className="url-field"
           type="password"
           autoComplete="current-password"
-          aria-label="Unlock password"
-          placeholder="Password"
+          aria-label={t.unlockPassword}
+          placeholder={t.password}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
       )}
-      <button type="button" className="season-btn is-selected" onClick={() => void scan()} disabled={busy}>
-        {busy ? 'Scanning…' : 'Scan grove'}
+      <button type="button" className="action-btn" onClick={() => void scan()} disabled={busy}>
+        {busy ? t.scanning : t.scanGrove}
       </button>
       {revealed && (
         <a className="reveal-link" href={revealed} target="_blank" rel="noopener noreferrer">

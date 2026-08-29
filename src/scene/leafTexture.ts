@@ -1,40 +1,261 @@
 import { CanvasTexture, SRGBColorSpace } from 'three'
 import type { VegetationForm } from './grassLayout'
 import { carpetOutline } from './grassLayout'
+import { hashString, mulberry32 } from './hash'
 import { silhouette, type LeafShape } from './leafShape'
 
 const leaves: Partial<Record<LeafShape, CanvasTexture>> = {}
 
+const LEAF_PX = 256
+type Ctx = CanvasRenderingContext2D
+type Pt = readonly [number, number]
+
+const px = (x: number) => (x + 0.5) * LEAF_PX
+const py = (y: number) => (0.5 - y) * LEAF_PX
+
+function trace(g: Ctx, outline: readonly Pt[], at: Pt = [0, 0], scale = 1, rotation = 0) {
+  const c = Math.cos(rotation)
+  const s = Math.sin(rotation)
+  g.beginPath()
+  outline.forEach(([x, y], index) => {
+    const rx = at[0] + (x * c - y * s) * scale
+    const ry = at[1] + (x * s + y * c) * scale
+    if (index === 0) g.moveTo(px(rx), py(ry))
+    else g.lineTo(px(rx), py(ry))
+  })
+  g.closePath()
+}
+
+function fillShape(g: Ctx, shape: LeafShape) {
+  g.fillStyle = '#ffffff'
+  trace(g, silhouette(shape))
+  g.fill()
+}
+
+function stroke(g: Ctx, from: Pt, to: Pt, width: number, tone = '#d2d2d2') {
+  g.strokeStyle = tone
+  g.lineWidth = width
+  g.lineCap = 'round'
+  g.beginPath()
+  g.moveTo(px(from[0]), py(from[1]))
+  g.lineTo(px(to[0]), py(to[1]))
+  g.stroke()
+}
+
+/** Midrib and paired side veins on a broadleaf. */
+function veinBroadleaf(g: Ctx) {
+  stroke(g, [0, -0.47], [0, 0.44], 2, '#cfcfcf')
+  for (let i = 0; i < 5; i++) {
+    const y = -0.3 + i * 0.15
+    const reach = 0.3 - Math.abs(y) * 0.28
+    stroke(g, [0, y], [reach, y + 0.16], 1.3, '#d9d9d9')
+    stroke(g, [0, y], [-reach, y + 0.16], 1.3, '#d9d9d9')
+  }
+}
+
+/** One vein from the petiole to every lobe tip of the palmate maple. */
+function veinMaple(g: Ctx) {
+  const base: Pt = [0, -0.4]
+  for (let k = 0; k < 5; k++) {
+    const angle = (k * Math.PI * 2) / 5
+    const radius = 0.47 * (0.84 + 0.16 * Math.cos(angle))
+    const tip: Pt = [Math.sin(angle) * radius, Math.cos(angle) * radius]
+    stroke(g, base, tip, 1.8, '#cdcdcd')
+    stroke(g, [tip[0] * 0.55, tip[1] * 0.55 - 0.1], [tip[0] * 0.55 + Math.cos(angle) * 0.12, tip[1] * 0.55 - Math.sin(angle) * 0.12 - 0.05], 1.1, '#dadada')
+  }
+}
+
+function drawBlossom(g: Ctx) {
+  fillShape(g, 'blossom')
+  for (let k = 0; k < 5; k++) {
+    const angle = (k * Math.PI * 2) / 5
+    stroke(g, [0, 0], [Math.sin(angle) * 0.3, Math.cos(angle) * 0.3], 1.4, '#e3e3e3')
+  }
+  g.fillStyle = '#cfcfcf'
+  g.beginPath()
+  g.arc(px(0), py(0), 0.06 * LEAF_PX, 0, Math.PI * 2)
+  g.fill()
+  // Stamens: a ring of dots around the centre.
+  g.fillStyle = '#bdbdbd'
+  for (let k = 0; k < 10; k++) {
+    const angle = (k / 10) * Math.PI * 2
+    g.beginPath()
+    g.arc(px(Math.sin(angle) * 0.11), py(Math.cos(angle) * 0.11), 0.014 * LEAF_PX, 0, Math.PI * 2)
+    g.fill()
+  }
+}
+
+/** A pine twig: one stem with paired needles sweeping upward along it. */
+function drawPineTwig(g: Ctx) {
+  stroke(g, [0, -0.49], [0.02, 0.4], 3, '#cbcbcb')
+  for (let t = 0.04; t <= 0.96; t += 0.055) {
+    const y = -0.49 + t * 0.89
+    const x = 0.02 * t
+    const length = 0.2 * (1 - t * 0.35)
+    stroke(g, [x, y], [x + length, y + length * 0.9], 2.2, '#ffffff')
+    stroke(g, [x, y], [x - length, y + length * 0.9], 2.2, '#ffffff')
+  }
+  stroke(g, [0.02, 0.4], [0.02, 0.49], 2.2, '#ffffff')
+  stroke(g, [0.02, 0.4], [0.1, 0.48], 2.2, '#ffffff')
+  stroke(g, [0.02, 0.4], [-0.06, 0.48], 2.2, '#ffffff')
+}
+
+/** A willow withe: a thin stem hanging from the top with narrow leaflets down its length. */
+function drawWillowWithe(g: Ctx) {
+  g.strokeStyle = '#cdcdcd'
+  g.lineWidth = 2.4
+  g.lineCap = 'round'
+  g.beginPath()
+  g.moveTo(px(-0.01), py(0.49))
+  g.quadraticCurveTo(px(0.05), py(0), px(0.02), py(-0.49))
+  g.stroke()
+  g.fillStyle = '#ffffff'
+  for (let t = 0.06; t <= 0.94; t += 0.065) {
+    const y = 0.49 - t * 0.98
+    const sx = 0.05 * 4 * t * (1 - t) + 0.02 * t - 0.01 * (1 - t)
+    const side = Math.round(t / 0.065) % 2 === 0 ? 1 : -1
+    const angle = side * 0.95
+    g.save()
+    g.translate(px(sx + side * 0.045), py(y - 0.03))
+    g.rotate(angle)
+    g.beginPath()
+    g.ellipse(0, 0, 0.018 * LEAF_PX, 0.062 * LEAF_PX, 0, 0, Math.PI * 2)
+    g.fill()
+    g.restore()
+  }
+}
+
+/**
+ * A coverage cluster is one solid mass from above; from the side it should
+ * still read as its species, so its interior carries that species' leaves,
+ * needles, or blades as light strokes.
+ */
+function drawCluster(g: Ctx, shape: LeafShape) {
+  // Base: the whole outline, a shade darker than the elements laid over it,
+  // so the gaps between leaves read as depth rather than as holes.
+  g.fillStyle = '#d4d4d4'
+  trace(g, silhouette(shape))
+  g.fill()
+  g.save()
+  trace(g, silhouette(shape))
+  g.clip()
+  const rng = mulberry32(hashString(`cluster:${shape}`))
+  if (shape === 'pineCanopy') {
+    // Needle sprays fanning from a few nodes.
+    for (let node = 0; node < 7; node++) {
+      const x = (rng() - 0.5) * 0.7
+      const y = (rng() - 0.5) * 0.7
+      const base = rng() * Math.PI * 2
+      for (let i = 0; i < 9; i++) {
+        const angle = base + (i - 4) * 0.22
+        stroke(g, [x, y], [x + Math.cos(angle) * 0.24, y + Math.sin(angle) * 0.24], 2.6, '#ffffff')
+      }
+      stroke(g, [x, y], [x - Math.cos(base) * 0.1, y - Math.sin(base) * 0.1], 3, '#bdbdbd')
+    }
+  } else if (shape === 'willowCanopy') {
+    // Hanging blades in loose strands.
+    for (let i = 0; i < 26; i++) {
+      const x = (rng() - 0.5) * 0.95
+      const top = 0.5 - rng() * 0.4
+      const lean = (rng() - 0.5) * 0.16
+      g.save()
+      g.translate(px(x), py(top - 0.12))
+      g.rotate(lean)
+      g.fillStyle = '#ffffff'
+      g.beginPath()
+      g.ellipse(0, 0, 0.032 * LEAF_PX, 0.15 * LEAF_PX, 0, 0, Math.PI * 2)
+      g.fill()
+      g.restore()
+    }
+  } else {
+    const leaf: LeafShape = shape === 'mapleCanopy' ? 'maple' : shape === 'appleCanopy' ? 'apple' : 'cherry'
+    const outline = silhouette(leaf)
+    for (let i = 0; i < 13; i++) {
+      const at: Pt = [(rng() - 0.5) * 0.8, (rng() - 0.5) * 0.8]
+      trace(g, outline, at, 0.5 + rng() * 0.3, rng() * Math.PI * 2)
+      g.fillStyle = i % 3 === 0 ? '#ececec' : '#ffffff'
+      g.fill()
+      g.strokeStyle = '#c9c9c9'
+      g.lineWidth = 1.4
+      g.stroke()
+    }
+  }
+  g.restore()
+}
+
+/** One apple, unit-free: body, dimple, stem. */
+function drawApple(g: Ctx, cx: number, cy: number, r: number, tone: string) {
+  g.fillStyle = tone
+  g.beginPath()
+  g.arc(px(cx) - r * 0.45, py(cy) - r * 0.1, r * 0.85, 0, Math.PI * 2)
+  g.arc(px(cx) + r * 0.45, py(cy) - r * 0.1, r * 0.85, 0, Math.PI * 2)
+  g.arc(px(cx), py(cy) + r * 0.15, r, 0, Math.PI * 2)
+  g.fill()
+  g.strokeStyle = '#8a8a8a'
+  g.lineWidth = Math.max(1.2, r * 0.12)
+  g.lineCap = 'round'
+  g.beginPath()
+  g.moveTo(px(cx), py(cy) - r * 0.75)
+  g.lineTo(px(cx) + r * 0.25, py(cy) - r * 1.3)
+  g.stroke()
+}
+
+/**
+ * A module's worth of apples: the coverage cluster a fruit-heavy module wears
+ * in autumn, opaque inside the outline like every cluster, red by tint.
+ */
+function drawAppleHeap(g: Ctx) {
+  g.fillStyle = '#c4c4c4'
+  trace(g, silhouette('appleHeap'))
+  g.fill()
+  g.save()
+  trace(g, silhouette('appleHeap'))
+  g.clip()
+  const rng = mulberry32(hashString('cluster:appleHeap'))
+  for (let i = 0; i < 11; i++) {
+    const at: Pt = [(rng() - 0.5) * 0.76, (rng() - 0.5) * 0.76]
+    drawApple(g, at[0], at[1], (0.09 + rng() * 0.05) * LEAF_PX, i % 4 === 0 ? '#e6e6e6' : '#ffffff')
+  }
+  g.restore()
+}
+
 /**
  * Draw a leaf from the same normalized outline used by layout and projection
  * tests, so alpha pixels and module-boundary maths cannot drift apart.
+ * Coverage clusters are opaque inside their outline; the crown's visible
+ * elements (twigs, withes, blossoms) may be open inside their box.
  */
 export function leafTexture(shape: LeafShape = 'ovate'): CanvasTexture {
   const found = leaves[shape]
   if (found) return found
-  const size = 128
   const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
+  canvas.width = LEAF_PX
+  canvas.height = LEAF_PX
   const g = canvas.getContext('2d')
   const texture = new CanvasTexture(canvas)
   leaves[shape] = texture
   if (!g) {
     return texture
   }
-  g.clearRect(0, 0, size, size)
-  g.fillStyle = '#ffffff'
-  g.beginPath()
-  silhouette(shape).forEach(([x, y], index) => {
-    const px = (x + 0.5) * size
-    const py = (0.5 - y) * size
-    if (index === 0) g.moveTo(px, py)
-    else g.lineTo(px, py)
-  })
-  g.closePath()
-  g.fill()
+  g.clearRect(0, 0, LEAF_PX, LEAF_PX)
+  if (shape.endsWith('Canopy')) drawCluster(g, shape)
+  else if (shape === 'appleHeap') drawAppleHeap(g)
+  else if (shape === 'blossom') drawBlossom(g)
+  else if (shape === 'pineTwig') drawPineTwig(g)
+  else if (shape === 'willowWithe') drawWillowWithe(g)
+  else {
+    fillShape(g, shape)
+    // Veins never leave the leaf: a stroke past the outline would hang in
+    // the air as a hairline.
+    g.save()
+    trace(g, silhouette(shape))
+    g.clip()
+    if (shape === 'maple') veinMaple(g)
+    else if (shape === 'cherry' || shape === 'apple') veinBroadleaf(g)
+    g.restore()
+  }
   texture.colorSpace = SRGBColorSpace
-  texture.anisotropy = 4
+  texture.anisotropy = 8
   return texture
 }
 
@@ -63,11 +284,15 @@ export function petalTexture(): CanvasTexture {
 
 const fruits: Partial<Record<'round' | 'long', CanvasTexture>> = {}
 
-/** Apple / maple fruit is a disk; banana fruit is a long lozenge. */
+/**
+ * An apple: two shoulders, a dimple at the top with a short stem, a soft
+ * highlight. Drawn white so the instance colour paints it red. `long` is a
+ * lozenge kept for other fruit.
+ */
 export function fruitTexture(kind: 'round' | 'long' = 'round'): CanvasTexture {
   const found = fruits[kind]
   if (found) return found
-  const size = 64
+  const size = 128
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
@@ -76,11 +301,39 @@ export function fruitTexture(kind: 'round' | 'long' = 'round'): CanvasTexture {
   fruits[kind] = texture
   if (!g) return texture
   g.fillStyle = '#ffffff'
-  g.beginPath()
-  if (kind === 'long') g.ellipse(size / 2, size / 2, size * 0.16, size * 0.42, 0.45, 0, Math.PI * 2)
-  else g.ellipse(size / 2, size / 2, size * 0.3, size * 0.34, 0, 0, Math.PI * 2)
-  g.fill()
+  if (kind === 'long') {
+    g.beginPath()
+    g.ellipse(size / 2, size / 2, size * 0.16, size * 0.42, 0.45, 0, Math.PI * 2)
+    g.fill()
+  } else {
+    const c = size / 2
+    g.beginPath()
+    g.arc(c - size * 0.13, c + size * 0.03, size * 0.26, 0, Math.PI * 2)
+    g.arc(c + size * 0.13, c + size * 0.03, size * 0.26, 0, Math.PI * 2)
+    g.arc(c, c + size * 0.06, size * 0.3, 0, Math.PI * 2)
+    g.fill()
+    // Dimple: cut a little of the background back in at the top centre.
+    g.save()
+    g.globalCompositeOperation = 'destination-out'
+    g.beginPath()
+    g.ellipse(c, c - size * 0.24, size * 0.08, size * 0.05, 0, 0, Math.PI * 2)
+    g.fill()
+    g.restore()
+    g.strokeStyle = '#8a8a8a'
+    g.lineWidth = size * 0.035
+    g.lineCap = 'round'
+    g.beginPath()
+    g.moveTo(c, c - size * 0.22)
+    g.quadraticCurveTo(c + size * 0.04, c - size * 0.34, c + size * 0.08, c - size * 0.42)
+    g.stroke()
+    g.fillStyle = 'rgba(255,255,255,0.0)'
+    g.fillStyle = '#f4f4f4'
+    g.beginPath()
+    g.ellipse(c - size * 0.13, c - size * 0.06, size * 0.06, size * 0.1, -0.5, 0, Math.PI * 2)
+    g.fill()
+  }
   texture.colorSpace = SRGBColorSpace
+  texture.anisotropy = 8
   return texture
 }
 

@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Color, InstancedMesh, Object3D } from 'three'
+import { Color, InstancedMesh, MeshBasicMaterial, Object3D } from 'three'
 import type { ModuleGrid } from '../qr/types'
 import {
   buildSceneryVegetation,
@@ -9,8 +9,10 @@ import {
 } from './grassLayout'
 import { hashString } from './hash'
 import { vegetationTexture } from './leafTexture'
-import { groundCoverOf, mixHex, type PaletteId, type SceneColors, type Season } from './palettes'
+import { groundCoverOf, mixHex, type SceneColors, type Season } from './palettes'
 import type { SceneRef } from './sceneState'
+import type { TreeSpecies } from './treeSpecies'
+import { sceneryOpacity } from './view'
 
 function vegetationColor(form: VegetationForm, tone: number, colors: SceneColors): string {
   const amount = tone / 3
@@ -31,6 +33,7 @@ function SceneryGroup({
   reduced: boolean
 }) {
   const mesh = useRef<InstancedMesh>(null)
+  const material = useRef<MeshBasicMaterial>(null)
   const dummy = useRef(new Object3D())
   const color = useRef(new Color())
   const colorKey = useRef('')
@@ -39,7 +42,17 @@ function SceneryGroup({
   useFrame(({ clock }) => {
     const inst = mesh.current
     if (!inst) return
-    const { colors } = scene.current
+    const { colors, pitch } = scene.current
+    // Rim clumps and trunk-foot rosettes live in the code's quiet zone and on
+    // its light modules. A decoder's block threshold turns even a pale tuft
+    // into ink, so like the weather they fade out on the way overhead.
+    const opacity = sceneryOpacity(pitch)
+    const mat = material.current
+    if (mat) {
+      mat.opacity = opacity
+      mat.visible = opacity > 0.01
+    }
+    if (opacity <= 0.01) return
 
     const t = reduced ? 0 : clock.elapsedTime
     const swayScale = form === 'broad' ? 0.05 : form === 'seed' ? 0.13 : 0.1
@@ -81,7 +94,7 @@ function SceneryGroup({
       frustumCulled={false}
     >
       <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial map={map} transparent alphaTest={0.42} side={2} />
+      <meshBasicMaterial ref={material} map={map} transparent alphaTest={0.42} side={2} />
     </instancedMesh>
   )
 }
@@ -95,15 +108,15 @@ export function Grass({
   scene,
   reduced,
   season,
-  palette,
+  tree,
 }: {
   grid: ModuleGrid
   scene: SceneRef
   reduced: boolean
   season: Season
-  palette: PaletteId
+  tree: TreeSpecies
 }) {
-  const cover = groundCoverOf(season, palette)
+  const cover = groundCoverOf(season, tree)
   const vegetation = useMemo(
     () => buildSceneryVegetation(grid, hashString(grid.payload), cover),
     [grid, cover],

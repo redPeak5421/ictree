@@ -8,12 +8,13 @@ import {
   type FinderVegetationInstance,
 } from './grassLayout'
 import { hashString, mulberry32 } from './hash'
-import { fitScale, qrSlots, type Bounds, type LeafShape } from './leafShape'
+import { fitScale, halfExtents, qrSlots, type Bounds, type LeafShape } from './leafShape'
 import {
   CORNER_MODULES,
+  canopyShapeFor,
   crownLayout,
+  fillerShapeFor,
   isCornerCell,
-  leafShapeFor,
   profileFor,
   type CrownLayer,
   type TreeHabit,
@@ -233,6 +234,37 @@ export interface BuildTreeOptions {
   habit?: TreeHabit
 }
 
+/**
+ * Largest scale at which an upright plane (a hanging withe) stays inside its
+ * module from above. Seen from overhead it is a line along its heading, plus
+ * whatever its slight tilt lets the height project, so the flat-leaf fit
+ * would be far too strict for it — and a naive cap lets it cross into a
+ * light neighbour as a dark hairline.
+ */
+export function uprightFit(
+  ox: number,
+  oz: number,
+  phi: number,
+  tilt: number,
+  bounds: Bounds,
+  cap: number,
+  shape: LeafShape,
+): number {
+  const [halfX, halfY] = halfExtents(shape)
+  const lean = halfY * Math.abs(Math.sin(tilt))
+  const c = Math.abs(Math.cos(phi))
+  const s = Math.abs(Math.sin(phi))
+  const extentX = halfX * c + lean * s + 1e-3
+  const extentZ = halfX * s + lean * c + 1e-3
+  const scale = Math.min(
+    (bounds.right - ox) / extentX,
+    (ox - bounds.left) / extentX,
+    (bounds.front - oz) / extentZ,
+    (oz - bounds.back) / extentZ,
+  )
+  return Math.max(0, Math.min(cap, scale * 0.985))
+}
+
 export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOptions = {}): TreeRig {
   const island = islandExtent(grid.size)
   const bits = payloadBits(grid)
@@ -254,11 +286,11 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     seeds.push({ x: 0, y: (trunkH * i) / trunkSteps, z: 0, parent: i - 1, depth: i })
   }
   const top = seeds.length - 1
-  const sectors = species === 'pine' ? 7 : species === 'maple' || species === 'apple' ? 6 : species === 'banana' ? 4 : 5
+  const sectors = species === 'pine' ? 7 : species === 'maple' || species === 'apple' ? 6 : 5
   const mass = sectorMass(grid, sectors)
   const limbLen =
     island *
-    (species === 'oak' ? 0.21 : species === 'cherry' || species === 'willow' ? 0.19 : species === 'pine' ? 0.12 : species === 'banana' ? 0.14 : 0.16)
+    (species === 'cherry' || species === 'willow' ? 0.19 : species === 'pine' ? 0.12 : 0.16)
   for (let s = 0; s < sectors; s++) {
     const weight = 0.7 + mass[s]! * 0.3
     const yaw = (s / sectors) * Math.PI * 2 + reader.range(-0.35, 0.35)
@@ -355,9 +387,12 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     return v < 0.22 ? 3 : v < 0.48 ? 0 : v < 0.74 ? 1 : 2
   }
   const leaves: LeafInstance[] = []
-  const detailShape: LeafShape = leafShapeFor(species)
-  const detailSlots = new Set([5, 6, 7])
-  const leanFor = (layer: CrownLayer) => (layer === 'low' ? 0.34 : layer === 'middle' ? 0.28 : 0.22)
+
+  // Every canopy leaf is the species' own shape. Coverage comes from the
+  // outline design (see canopyShapeFor), not from hiding generic leaves
+  // among the real ones.
+  const canopyShape: LeafShape = canopyShapeFor(species)
+  const detailShape: LeafShape = fillerShapeFor(species)
   for (const { point, at } of owners) {
     const cell = point.cell
     const cx = cell.x - half
@@ -366,20 +401,15 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     const node = nodes[colony.anchors[at]!]!
     const anchor: [number, number, number] = [node.x, node.y, node.z]
     qrSlots(13, rng).forEach((slot) => {
-      const shape: LeafShape = grid.version < 10 && detailSlots.has(slot.id) ? detailShape : 'ovate'
-      const detail = shape !== 'ovate'
+      const shape: LeafShape = canopyShape
       const bounds = boundsOf(cell, 0)
       const ly = point.height + (rng() - 0.5) * 0.68
       leaves.push({
         kind: 'leaf',
         shape,
         position: [cx + slot.ox, ly, cz + slot.oz],
-        euler: [
-          -Math.PI / 2 + (shape === 'ovate' ? 0.05 + rng() * 0.23 : rng() * leanFor(point.layer)),
-          slot.phi,
-          0,
-        ],
-        scale: fitScale(slot.ox, slot.oz, slot.phi, bounds, slot.cap * (detail ? 1.12 : 1), shape),
+        euler: [-Math.PI / 2 + 0.05 + rng() * 0.23, slot.phi, 0],
+        scale: fitScale(slot.ox, slot.oz, slot.phi, bounds, slot.cap, shape),
         anchor,
         cell: [cx, cz],
         ink,
@@ -409,18 +439,35 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     const bounds = boundsOf(cell, 0)
     const ly = Math.min(crownTopHeight + 0.9, Math.max(crownBot - 0.5, y))
     const lift = (ly - crownBot) / crownH
-    const shape: LeafShape = rng() < 0.45 ? detailShape : 'ovate'
+    // The visible bulk is the species' own element; clusters keep the mass
+    // full. Twigs and withes are open shapes, so those crowns lean harder on
+    // them or the conifer reads as a broadleaf again.
+    // A cluster disc among single leaves reads as "not a leaf", so the
+    // visible mass is the species' element alone; twigs and withes keep a
+    // few clusters for body.
+    const elementShare = detailShape === 'pineTwig' || detailShape === 'willowWithe' ? 0.9 : 1
+    const shape: LeafShape = rng() < elementShare ? detailShape : canopyShape
     const phi = rng() * Math.PI * 2
+    // A willow withe hangs: its plane is upright, so from above it is a line
+    // and it may run longer than a flat leaf could. A pine twig angles up.
+    const hangs = shape === 'willowWithe'
+    const twig = shape === 'pineTwig'
+    const reach = hangs ? 0.3 : 0.42
     // Centre stays in this module. A seam in X plus a seam in Z would
     // otherwise land in the diagonal neighbour, which may be light.
-    const ox = Math.min(0.42, Math.max(-0.42, x - cx))
-    const oz = Math.min(0.42, Math.max(-0.42, z - cz))
+    const ox = Math.min(reach, Math.max(-reach, x - cx))
+    const oz = Math.min(reach, Math.max(-reach, z - cz))
     const cap = (fillerLo + rng() * (fillerHi - fillerLo)) * sizeFactor
+    const tilt = hangs
+      ? (rng() - 0.5) * 0.12
+      : twig
+        ? -Math.PI / 2 + 0.45 + rng() * 0.75
+        : -Math.PI / 2 + (lush ? 0.12 + rng() * 0.7 : 0.08 + rng() * 0.42)
     filler.push({
       shape,
       position: [cx + ox, ly, cz + oz],
-      euler: [-Math.PI / 2 + (lush ? 0.12 + rng() * 0.7 : 0.08 + rng() * 0.42), phi, 0],
-      scale: fitScale(ox, oz, phi, bounds, cap, shape),
+      euler: [tilt, phi, 0],
+      scale: hangs ? uprightFit(ox, oz, phi, tilt, bounds, cap * 1.6, shape) : fitScale(ox, oz, phi, bounds, cap, shape),
       tone: toneAt(ly),
       shade: Math.min(1.22, Math.max(0.74, 0.82 + lift * 0.32 + (rng() - 0.5) * 0.26)),
       ink: moduleInkLuma(cell),

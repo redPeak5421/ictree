@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyDrag, clampPitch, PITCH_MAX, PITCH_MIN, rightOf, stepSpin, type OrbitState } from './orbit'
+import { applyDrag, clampPitch, PITCH_MAX, PITCH_MIN, rightOf, stepSpin, type OrbitState, applyZoom, clampZoom, wheelZoomFactor, ZOOM_MAX, ZOOM_MIN } from './orbit'
 
 function orbit(): OrbitState {
   return { yaw: 1, pitch: 0.5, spinYaw: 0, spinPitch: 0 }
@@ -39,5 +39,20 @@ describe('orbit', () => {
     const [x, z] = rightOf(Math.PI / 4)
     expect(x).toBeCloseTo(Math.SQRT1_2, 6)
     expect(z).toBeCloseTo(-Math.SQRT1_2, 6)
+  })
+})
+
+describe('zoom', () => {
+  it('clamps magnification between fit and a close look', () => {
+    expect(clampZoom(0.2)).toBe(ZOOM_MIN)
+    expect(clampZoom(99)).toBe(ZOOM_MAX)
+    expect(applyZoom(1, 2)).toBe(2)
+    expect(applyZoom(4, 2)).toBe(ZOOM_MAX)
+  })
+
+  it('zooms in on wheel-up and out on wheel-down, symmetrically', () => {
+    expect(wheelZoomFactor(-100)).toBeGreaterThan(1)
+    expect(wheelZoomFactor(100)).toBeLessThan(1)
+    expect(wheelZoomFactor(-100) * wheelZoomFactor(100)).toBeCloseTo(1, 9)
   })
 })

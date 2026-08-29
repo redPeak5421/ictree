@@ -1,14 +1,16 @@
+import { useT } from '../i18n/useLocale'
 import type { Season } from '../scene/palettes'
 
-const OPTIONS: { id: Season; label: string; mark: string }[] = [
-  { id: 'spring', label: 'Spring', mark: '🌸' },
-  { id: 'summer', label: 'Summer', mark: '☀️' },
-  { id: 'autumn', label: 'Autumn', mark: '🌧️' },
+const OPTIONS: { id: Season; mark: string }[] = [
+  { id: 'spring', mark: '🌸' },
+  { id: 'summer', mark: '☀️' },
+  { id: 'autumn', mark: '🌧️' },
 ]
 
 export function SeasonBar({ season, onChange }: { season: Season; onChange: (season: Season) => void }) {
+  const t = useT()
   return (
-    <div className="season-bar" role="radiogroup" aria-label="Season">
+    <div className="segmented" role="radiogroup" aria-label={t.season}>
       {OPTIONS.map((option) => {
         const selected = option.id === season
         return (
@@ -17,11 +19,11 @@ export function SeasonBar({ season, onChange }: { season: Season; onChange: (sea
             type="button"
             role="radio"
             aria-checked={selected}
-            className={selected ? 'season-btn is-selected' : 'season-btn'}
+            className={selected ? 'segment is-selected' : 'segment'}
             onClick={() => onChange(option.id)}
           >
             <span aria-hidden="true">{option.mark}</span>
-            {option.label}
+            <span>{t.seasons[option.id]}</span>
           </button>
         )
       })}

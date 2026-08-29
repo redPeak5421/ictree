@@ -1,16 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import { encodeGrid } from '../qr/encode'
 import { hashString } from './hash'
+import { halfExtents } from './leafShape'
+import { buildTree } from './tree'
 import {
+  canopyShapeFor,
   crownLayout,
+  fillerShapeFor,
+  isTreeSpecies,
+  leafShapeFor,
   profileFor,
   resolveTreeChoice,
+  TREE_KINDS,
   type CrownPoint,
   type TreeSpecies,
 } from './treeSpecies'
 
 const FIXTURES = [
-  ['https://example.com/tree-1', 'oak'],
+  ['https://example.com/tree-1', 'apple'],
   ['https://example.com/tree-2', 'maple'],
   ['https://example.com/tree-0', 'cherry'],
 ] as const satisfies readonly (readonly [string, TreeSpecies])[]
@@ -51,14 +58,90 @@ function metrics(points: CrownPoint[], size: number): Metrics {
 }
 
 describe('tree species selection', () => {
-  it('picks species from the palette instead of a tree picker', () => {
-    expect(profileFor('oak').species).toBe('oak')
-    expect(resolveTreeChoice('https://example.com/tree-1', 'default')).toEqual({ species: 'cherry', habit: 'lush' })
-    expect(resolveTreeChoice('https://example.com/tree-1', 'lavender')).toEqual({ species: 'willow', habit: 'lush' })
-    expect(resolveTreeChoice('https://example.com/tree-1', 'coral')).toEqual({ species: 'maple', habit: 'lush' })
-    expect(resolveTreeChoice('https://example.com/tree-1', 'gold')).toEqual({ species: 'apple', habit: 'lush' })
-    expect(resolveTreeChoice('https://example.com/tree-1', 'sky')).toEqual({ species: 'banana', habit: 'lush' })
-    expect(resolveTreeChoice('https://example.com/tree-1', 'snow')).toEqual({ species: 'pine', habit: 'sparse' })
+  it('offers exactly the five plantable trees, in picker order', () => {
+    expect(TREE_KINDS.map((kind) => kind.id)).toEqual(['cherry', 'apple', 'pine', 'willow', 'maple'])
+    expect(TREE_KINDS.every((kind) => kind.label.length > 0)).toBe(true)
+    expect(isTreeSpecies('maple')).toBe(true)
+    expect(isTreeSpecies('banana')).toBe(false)
+  })
+
+  it('plants the tree the person picked, regardless of the payload', () => {
+    for (const kind of TREE_KINDS) {
+      expect(profileFor(kind.id).species).toBe(kind.id)
+      expect(resolveTreeChoice('https://example.com/tree-1', kind.id)).toEqual({ species: kind.id, habit: 'lush' })
+      expect(resolveTreeChoice('你好', kind.id).species).toBe(kind.id)
+    }
+    expect(resolveTreeChoice('https://example.com/tree-1').species).toBe('cherry')
+  })
+
+  it('builds every canopy leaf and filler from the species\' own shapes, never a generic leaf', () => {
+    const grid = encodeGrid('https://example.com/tree-1')
+    for (const kind of TREE_KINDS) {
+      const rig = buildTree(grid, hashString(grid.payload), { species: kind.id })
+      const canopy = canopyShapeFor(kind.id)
+      const own = new Set([canopy, fillerShapeFor(kind.id)])
+      expect(rig.leaves.length).toBeGreaterThan(0)
+      const coverage = new Set([canopy])
+      expect(rig.leaves.every((leaf) => coverage.has(leaf.shape))).toBe(true)
+      expect(rig.filler.every((leaf) => own.has(leaf.shape))).toBe(true)
+      expect(rig.filler.some((leaf) => leaf.shape === fillerShapeFor(kind.id))).toBe(true)
+    }
+    expect(canopyShapeFor('pine')).toBe('pineCanopy')
+    expect(canopyShapeFor('maple')).toBe('mapleCanopy')
+    expect(leafShapeFor('pine')).toBe('pine')
+    expect(fillerShapeFor('pine')).toBe('pineTwig')
+    expect(fillerShapeFor('willow')).toBe('willowWithe')
+    expect(fillerShapeFor('maple')).toBe('maple')
+  })
+
+  it('keeps apple coverage as leaves, never whole fruit-module heaps', () => {
+    const grid = encodeGrid('https://example.com/tree-1')
+    const apple = buildTree(grid, hashString(grid.payload), { species: 'apple' })
+    expect(apple.leaves.every((leaf) => leaf.shape === canopyShapeFor('apple'))).toBe(true)
+    expect(apple.filler.every((leaf) => leaf.shape === fillerShapeFor('apple'))).toBe(true)
+    const maple = buildTree(grid, hashString(grid.payload), { species: 'maple' })
+    expect(maple.leaves.some((leaf) => leaf.shape === 'appleHeap')).toBe(false)
+  })
+
+  it('hangs willow withes upright inside their module and angles pine twigs upward', () => {
+    const grid = encodeGrid('https://example.com/tree-1')
+    const half = (grid.size - 1) / 2
+    const willow = buildTree(grid, hashString(grid.payload), { species: 'willow' })
+    const withes = willow.filler.filter((leaf) => leaf.shape === 'willowWithe')
+    expect(withes.length).toBeGreaterThan(willow.filler.length * 0.4)
+    const isDark = (x: number, y: number) =>
+      x >= 0 && y >= 0 && x < grid.size && y < grid.size && grid.cells[y * grid.size + x]!.dark
+    const [halfX, halfY] = halfExtents('willowWithe')
+    let long = 0
+    for (const withe of withes) {
+      expect(Math.abs(withe.euler[0])).toBeLessThanOrEqual(0.06)
+      const mx = Math.round(withe.position[0] + half)
+      const my = Math.round(withe.position[2] + half)
+      expect(isDark(mx, my)).toBe(true)
+      expect(Math.abs(withe.position[0] + half - mx)).toBeLessThanOrEqual(0.3 + 1e-9)
+      expect(Math.abs(withe.position[2] + half - my)).toBeLessThanOrEqual(0.3 + 1e-9)
+      // Seen from above the upright withe is a line along its heading; both
+      // ends (and the sliver its tilt projects) must stay on dark modules.
+      const phi = withe.euler[1]
+      const lean = halfY * Math.abs(Math.sin(withe.euler[0])) * withe.scale
+      const dx = halfX * withe.scale * Math.cos(phi)
+      const dz = halfX * withe.scale * Math.sin(phi)
+      for (const [ex, ez] of [[dx, dz], [-dx, -dz], [lean * Math.sin(phi), lean * Math.cos(phi)], [-lean * Math.sin(phi), -lean * Math.cos(phi)]]) {
+        const px = withe.position[0] + half + ex
+        const pz = withe.position[2] + half + ez
+        expect(isDark(Math.round(px), Math.round(pz)), `withe end at ${px.toFixed(2)},${pz.toFixed(2)}`).toBe(true)
+      }
+      if (withe.scale > 1.2) long++
+    }
+    expect(long).toBeGreaterThan(withes.length * 0.2)
+    const pine = buildTree(grid, hashString(grid.payload), { species: 'pine' })
+    const twigs = pine.filler.filter((leaf) => leaf.shape === 'pineTwig')
+    expect(twigs.length).toBeGreaterThan(pine.filler.length * 0.4)
+    for (const twig of twigs) {
+      const tilt = twig.euler[0] + Math.PI / 2
+      expect(tilt).toBeGreaterThanOrEqual(0.45)
+      expect(tilt).toBeLessThanOrEqual(1.2)
+    }
   })
 
   it('is deterministic and produces continuous, populated crown layers', () => {
@@ -77,17 +160,6 @@ describe('tree species selection', () => {
 })
 
 describe('species crown profiles', () => {
-  it('gives oak a low, wide, asymmetric crown with high outer shoulders', () => {
-    const payload = FIXTURES[0][0]
-    const grid = encodeGrid(payload)
-    const value = metrics(crownLayout(grid, hashString(payload), 'oak'), grid.size)
-    expect(value.extent).toBeGreaterThanOrEqual(0.36)
-    expect(value.extent).toBeLessThanOrEqual(0.48)
-    expect(value.highReach).toBeGreaterThanOrEqual(0.62)
-    expect(value.leftRight).toBeGreaterThanOrEqual(0.02)
-    expect(value.leftRight).toBeLessThanOrEqual(0.12)
-  })
-
   it('gives maple a tall rounded crown with a raised center', () => {
     const payload = FIXTURES[1][0]
     const grid = encodeGrid(payload)
@@ -125,13 +197,12 @@ describe('species crown profiles', () => {
     expect(value.center - value.outer).toBeGreaterThanOrEqual(0.1)
   })
 
-  it('gives apple a rounded crown and banana a high fountain', () => {
+  it('gives apple a rounded crown with a raised center', () => {
     const payload = FIXTURES[1][0]
     const grid = encodeGrid(payload)
     const apple = metrics(crownLayout(grid, hashString(payload), 'apple'), grid.size)
-    const banana = metrics(crownLayout(grid, hashString(payload), 'banana'), grid.size)
     expect(apple.center - apple.outer).toBeGreaterThanOrEqual(0.08)
-    expect(banana.center - banana.outer).toBeGreaterThanOrEqual(0.08)
-    expect(banana.extent).toBeGreaterThanOrEqual(0.44)
+    expect(apple.extent).toBeGreaterThanOrEqual(0.42)
+    expect(apple.extent).toBeLessThanOrEqual(0.56)
   })
 })

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { useT } from '../i18n/useLocale'
+import { translateMessage } from '../i18n/messages'
 import type { ModuleGrid } from '../qr/types'
 import type { SceneColors } from '../scene/palettes'
 import type { SceneRef } from '../scene/sceneState'
@@ -22,6 +24,7 @@ export function ShareMenu({
   scene: SceneRef
   onApplyStill: (state: ShareState) => void
 }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [stillNote, setStillNote] = useState<string | null>(null)
@@ -53,14 +56,14 @@ export function ShareMenu({
     try {
       await navigator.clipboard.writeText(link)
     } catch {
-      window.prompt('Copy link', link)
+      window.prompt(t.copyLinkPrompt, link)
     }
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1200)
   }
 
   const failStill = (err: unknown) => {
-    setStillNote(err instanceof Error ? err.message : STILL_NO_CANVAS)
+    setStillNote(translateMessage(t, err instanceof Error ? err.message : STILL_NO_CANVAS))
   }
 
   const openStill = async (file: File | undefined) => {
@@ -70,7 +73,7 @@ export function ShareMenu({
       onApplyStill(await readStillFile(file))
       setOpen(false)
     } catch (err) {
-      setStillNote(err instanceof Error ? err.message : STILL_ERROR)
+      setStillNote(translateMessage(t, err instanceof Error ? err.message : STILL_ERROR))
       setOpen(true)
     }
   }
@@ -82,7 +85,7 @@ export function ShareMenu({
         className="share-btn"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Share"
+        aria-label={t.share}
         onClick={() => setOpen((value) => !value)}
       >
         <ShareIcon />
@@ -96,64 +99,73 @@ export function ShareMenu({
       />
       {open && (
         <div className="share-menu" role="menu">
-          <button type="button" role="menuitem" onClick={() => void copy()}>
-            {copied ? 'Copied' : 'Copy Link'}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              downloadQrPng(grid, colors)
-              setOpen(false)
-            }}
-          >
-            Download QR
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              void downloadStillPng(state).then(() => setOpen(false)).catch(failStill)
-            }}
-          >
-            Save Still
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              void downloadLoopGif(state, scene).then(() => setOpen(false)).catch(failStill)
-            }}
-          >
-            Save Loop
-          </button>
-          <button type="button" role="menuitem" onClick={() => fileRef.current?.click()}>
-            Open Still
-          </button>
-          <a
-            role="menuitem"
-            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('grove')}&url=${encodeURIComponent(link)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Share on X
-          </a>
-          <a
-            role="menuitem"
-            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Facebook
-          </a>
-          <a
-            role="menuitem"
-            href={`https://wa.me/?text=${encodeURIComponent(link)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            WhatsApp
-          </a>
+          <div className="share-group" role="group" aria-label={t.shareGroup}>
+            <p className="share-group-title">{t.shareGroup}</p>
+            <button type="button" role="menuitem" onClick={() => void copy()}>
+              {copied ? t.copied : t.copyLink}
+            </button>
+            <a
+              role="menuitem"
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('grove')}&url=${encodeURIComponent(link)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t.shareOnX}
+            </a>
+            <a
+              role="menuitem"
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t.facebook}
+            </a>
+            <a
+              role="menuitem"
+              href={`https://wa.me/?text=${encodeURIComponent(link)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t.whatsapp}
+            </a>
+          </div>
+          <div className="share-group" role="group" aria-label={t.exportGroup}>
+            <p className="share-group-title">{t.exportGroup}</p>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                downloadQrPng(grid, colors)
+                setOpen(false)
+              }}
+            >
+              {t.downloadQr}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                void downloadStillPng(state).then(() => setOpen(false)).catch(failStill)
+              }}
+            >
+              {t.saveStill}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                void downloadLoopGif(state, scene).then(() => setOpen(false)).catch(failStill)
+              }}
+            >
+              {t.saveLoop}
+            </button>
+          </div>
+          <div className="share-group" role="group" aria-label={t.importGroup}>
+            <p className="share-group-title">{t.importGroup}</p>
+            <button type="button" role="menuitem" onClick={() => fileRef.current?.click()}>
+              {t.openStill}
+            </button>
+          </div>
           {stillNote && <p className="error">{stillNote}</p>}
         </div>
       )}

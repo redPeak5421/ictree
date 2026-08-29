@@ -126,7 +126,7 @@ describe('buildTree', () => {
   })
 
   it('tilts coverage leaves enough to avoid horizontal plates without approaching vertical', () => {
-    const coverage = tree.leaves.filter((leaf) => leaf.shape === 'ovate')
+    const coverage = tree.leaves
     const tilts = coverage.map((leaf) => leaf.euler[0] + Math.PI / 2)
     expect(Math.min(...tilts)).toBeGreaterThanOrEqual(0.05)
     expect(Math.max(...tilts)).toBeLessThanOrEqual(0.28)

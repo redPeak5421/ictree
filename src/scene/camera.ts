@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrthographicCamera } from 'three'
-import { stepSpin } from './orbit'
+import { clampZoom, stepSpin } from './orbit'
 import type { SceneRef } from './sceneState'
-import { cameraPose, glideAngle, isOverhead, squareYaw } from './view'
+import { cameraPose, glideAngle, isOverhead, squareYaw, OVERHEAD } from './view'
 
 export function OrbitCamera({
   scene,
@@ -63,6 +63,13 @@ export function OrbitCamera({
         stepSpin(state, step)
       }
     }
+    // The code is read at fit-to-frame: heading overhead lets the zoom go.
+    if (state.pitchTarget === OVERHEAD && state.zoom !== 1) state.zoomTarget = 1
+    if (state.zoomTarget !== null) {
+      const [zoom, done] = glideAngle(state.zoom, state.zoomTarget, reduced ? 1e9 : step)
+      state.zoom = clampZoom(zoom)
+      if (done) state.zoomTarget = null
+    }
     const overhead = isOverhead(state.pitch)
     if (overhead !== wasOverhead.current) {
       wasOverhead.current = overhead
@@ -76,7 +83,7 @@ export function OrbitCamera({
     const aspect = size.width / Math.max(1, size.height)
     // Whichever axis is tighter wins, so a portrait viewport fills its width
     // instead of shrinking the scene to fit a square.
-    const halfY = Math.max(pose.spanY / 2, pose.spanX / 2 / aspect)
+    const halfY = Math.max(pose.spanY / 2, pose.spanX / 2 / aspect) / state.zoom
     camera.top = halfY
     camera.bottom = -halfY
     camera.left = -halfY * aspect

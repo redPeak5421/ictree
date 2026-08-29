@@ -1,8 +1,16 @@
 import { foliageTones, hexRgb, mixHex, rgbHex, type SceneColors } from '../scene/palettes'
 import type { ModuleCell } from './types'
 
+/**
+ * Decoders do not agree on grey. ZXing weights green at 0.587 (Rec. 601);
+ * jsQR and most camera pipelines weight it at 0.715 (Rec. 709), which makes a
+ * green leaf read a full shade paler to them than to us. Pin to the brighter
+ * of the two so every scanner sees the ink at or below the target.
+ */
 function luma(r: number, g: number, b: number): number {
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  const bt601 = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  const bt709 = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+  return Math.max(bt601, bt709)
 }
 
 function setLuma(rgb: [number, number, number], target: number): [number, number, number] {
@@ -35,6 +43,12 @@ const CREAM = '#f2efe6'
  */
 function inkLuma(bucket: number): number {
   return 0.418 + (bucket & 1) * 0.01
+}
+
+/** The grey a decoder would read `hex` as. */
+export function lumaOfHex(hex: string): number {
+  const [r, g, b] = hexRgb(hex)
+  return luma(r, g, b)
 }
 
 /** Recolour `hex` to sit at exactly `luma`, keeping its hue. */
@@ -86,7 +100,7 @@ export function moduleRgb(
     ? mixHex(colors.finder, colors.foliage, bucket < 2 ? 0.06 : 0.14)
     : mixHex(tones[0]!, tones[2]!, bucket < 2 ? 0.18 : 0.42)
 
-  const art = setLuma(jitter(hexRgb(baseHex), salt, structural ? 3 : 6), moduleInkLuma(cell))
+  const art = setLuma(jitter(hexRgb(baseHex), salt, structural ? 3 : 6), moduleInkLuma(cell) + colors.inkLift)
   return [
     stone[0] + (art[0] - stone[0]) * morphT,
     stone[1] + (art[1] - stone[1]) * morphT,

@@ -123,6 +123,7 @@ export function rasterTreeProjection(
   const toPixel = (value: number) => (value + half + options.quiet + 0.5) * options.modulePx
 
   const grassTones = finderInkTones(options.colors)
+  const lift = options.colors.inkLift
   const paintPolygon = (world: readonly Point2[], rgb: readonly number[]) => {
     const polygon = world.map(([x, z]) => [toPixel(x), toPixel(z)] as const)
     const xs = polygon.map(([x]) => x)
@@ -139,7 +140,7 @@ export function rasterTreeProjection(
   }
 
   for (const leaf of rig.finderCarpet) {
-    paintPolygon(projectCarpetOutline(leaf), hexRgb(toLumaHex(grassTones[leaf.tone]!, leaf.ink)))
+    paintPolygon(projectCarpetOutline(leaf), hexRgb(toLumaHex(grassTones[leaf.tone]!, leaf.ink + lift)))
   }
 
   const tones = foliageTones(options.colors)
@@ -152,7 +153,7 @@ export function rasterTreeProjection(
     const right = Math.min(width - 1, Math.ceil(Math.max(...xs)))
     const top = Math.max(0, Math.floor(Math.min(...ys)))
     const bottom = Math.min(width - 1, Math.ceil(Math.max(...ys)))
-    const rgb = hexRgb(toLumaHex(tones[leaf.tone]!, leaf.ink))
+    const rgb = hexRgb(toLumaHex(tones[leaf.tone]!, leaf.ink + lift))
     for (let py = top; py <= bottom; py++) {
       for (let px = left; px <= right; px++) {
         if (insidePolygon(px + 0.5, py + 0.5, polygon)) paintPixel(data, mask, width, px, py, rgb)

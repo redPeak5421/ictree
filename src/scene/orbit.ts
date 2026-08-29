@@ -27,6 +27,23 @@ export const TAP_SLOP = 6
 /** Spin decays by e^-SPIN_DAMPING per second after the pointer lets go. */
 export const SPIN_DAMPING = 4
 
+export const ZOOM_MIN = 1
+export const ZOOM_MAX = 4.5
+
+export function clampZoom(zoom: number): number {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom))
+}
+
+/** Wheel notches or a pinch ratio, applied multiplicatively. */
+export function applyZoom(zoom: number, factor: number): number {
+  return clampZoom(zoom * factor)
+}
+
+/** A wheel delta in pixels becomes a magnification factor. */
+export function wheelZoomFactor(deltaY: number): number {
+  return Math.exp(-deltaY * 0.0016)
+}
+
 export function clampPitch(pitch: number): number {
   return Math.min(PITCH_MAX, Math.max(PITCH_MIN, pitch))
 }

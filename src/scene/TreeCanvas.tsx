@@ -1,18 +1,18 @@
-import { useMemo, useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { NoToneMapping } from 'three'
 import type { ModuleGrid } from '../qr/types'
 import { OrbitCamera } from './camera'
 import { Grass } from './grass'
 import { Ground } from './ground'
-import { applyDrag, SNAP_PITCH, TAP_SLOP } from './orbit'
+import { applyDrag, applyZoom, SNAP_PITCH, TAP_SLOP, wheelZoomFactor } from './orbit'
 import { Particles } from './particles/Particles'
 import type { SceneRef } from './sceneState'
 import { TreeFoliage } from './TreeFoliage'
 import { hashString } from './hash'
-import type { PaletteId, Season } from './palettes'
+import type { Season } from './palettes'
 import { buildTree, islandExtent } from './tree'
-import { resolveTreeChoice } from './treeSpecies'
+import { resolveTreeChoice, type TreeSpecies } from './treeSpecies'
 import { OVERHEAD, squareYaw } from './view'
 
 interface Pointer {
@@ -33,15 +33,17 @@ const TAP_MS = 600
 
 export function TreeCanvas({
   grid,
-  palette,
+  tree,
   season,
   scene,
   reduced,
+  rain,
   onToggle,
   onOverhead,
 }: {
   grid: ModuleGrid
-  palette: PaletteId
+  tree: TreeSpecies
+  rain: boolean
   season: Season
   scene: SceneRef
   reduced: boolean
@@ -49,21 +51,56 @@ export function TreeCanvas({
   onOverhead: (overhead: boolean) => void
 }) {
   const island = islandExtent(grid.size)
-  const choice = resolveTreeChoice(grid.payload, palette)
+  const choice = resolveTreeChoice(grid.payload, tree)
   const rig = useMemo(
     () => buildTree(grid, hashString(grid.payload), choice),
     [grid, choice.species, choice.habit],
   )
   const bg = scene.current.colors.bg
   const pointer = useRef<Pointer | null>(null)
+  /** Every pointer currently down, for pinch-to-zoom. */
+  const touches = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef<{ dist: number; zoom: number } | null>(null)
   const [grabbing, setGrabbing] = useState(false)
+  const host = useRef<HTMLCanvasElement | null>(null)
+
+  // Wheel zoom must be a non-passive listener to stop the page from scrolling.
+  useEffect(() => {
+    const el = host.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const state = scene.current
+      state.zoomTarget = null
+      state.zoom = applyZoom(state.zoom, wheelZoomFactor(e.deltaY))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [scene])
+
+  const pinchDistance = () => {
+    const [a, b] = [...touches.current.values()]
+    return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0
+  }
 
   // One pointer at a time: a drag turns the island, a tap glides the camera
   // overhead and back. Touch is the same path — the canvas has touch-action:
   // none.
   const down = (e: PointerEvent<HTMLDivElement>) => {
-    if (pointer.current) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
+    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (touches.current.size === 2) {
+      // Two fingers: the drag ends and a pinch begins.
+      pointer.current = null
+      scene.current.dragging = false
+      scene.current.spinYaw = 0
+      scene.current.spinPitch = 0
+      scene.current.zoomTarget = null
+      pinch.current = { dist: pinchDistance(), zoom: scene.current.zoom }
+      setGrabbing(false)
+      return
+    }
+    if (pointer.current || touches.current.size > 2) return
     const now = performance.now()
     pointer.current = { id: e.pointerId, x: e.clientX, y: e.clientY, at: now, start: now, moved: false }
     try {
@@ -74,6 +111,13 @@ export function TreeCanvas({
     }
   }
   const move = (e: PointerEvent<HTMLDivElement>) => {
+    if (touches.current.has(e.pointerId)) touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const pinching = pinch.current
+    if (pinching && touches.current.size >= 2) {
+      const dist = pinchDistance()
+      if (pinching.dist > 1) scene.current.zoom = applyZoom(pinching.zoom, dist / pinching.dist)
+      return
+    }
     const p = pointer.current
     if (!p || p.id !== e.pointerId) return
     const dx = e.clientX - p.x
@@ -93,6 +137,11 @@ export function TreeCanvas({
     p.at = now
   }
   const up = (e: PointerEvent<HTMLDivElement>) => {
+    touches.current.delete(e.pointerId)
+    if (pinch.current) {
+      if (touches.current.size < 2) pinch.current = null
+      return
+    }
     const p = pointer.current
     if (!p || p.id !== e.pointerId) return
     pointer.current = null
@@ -120,6 +169,7 @@ export function TreeCanvas({
 
   return (
     <Canvas
+      ref={host}
       className={grabbing ? 'tree-canvas grabbing' : 'tree-canvas'}
       orthographic
       camera={{ position: [island, island, island], near: 0.1, far: 500 }}
@@ -147,9 +197,9 @@ export function TreeCanvas({
         onOverhead={onOverhead}
       />
       <Ground grid={grid} rig={rig} scene={scene} />
-      <Grass grid={grid} scene={scene} reduced={reduced} season={season} palette={palette} />
-      <TreeFoliage rig={rig} scene={scene} palette={palette} season={season} />
-      <Particles grid={grid} scene={scene} reduced={reduced} />
+      <Grass grid={grid} scene={scene} reduced={reduced} season={season} tree={tree} />
+      <TreeFoliage rig={rig} scene={scene} tree={tree} season={season} />
+      <Particles grid={grid} scene={scene} reduced={reduced} species={rig.species} raining={rain} />
     </Canvas>
   )
 }
