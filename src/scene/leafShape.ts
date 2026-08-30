@@ -156,7 +156,7 @@ const OUTLINES: Record<LeafShape, readonly Point2[]> = {
   ovate: superellipse(64, 0.48, 0.49, 2.8),
   oak: oakOutline(),
   maple: mapleOutline(),
-  cherry: pointedLeaf(64, 0.4, 0.49, 0.45, 0.04, 14),
+  cherry: pointedLeaf(64, 0.4, 0.49, 0.62, 0.07, 16),
   willow: ellipse(48, 0.14, 0.49, 0.03, 8),
   pine: pineOutline(),
   apple: pointedLeaf(64, 0.45, 0.49, 0.35, 0.025, 10),

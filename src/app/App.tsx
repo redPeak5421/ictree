@@ -2,6 +2,7 @@ import { translateMessage } from '../i18n/messages'
 import { useT } from '../i18n/useLocale'
 import { TreeCanvas } from '../scene/TreeCanvas'
 import { HintPill } from '../ui/HintPill'
+import { InkStyleBar } from '../ui/InkStyleBar'
 import { LanguageSelect } from '../ui/LanguageSelect'
 import { ModeBar } from '../ui/ModeBar'
 import { MuteButton } from '../ui/MuteButton'
@@ -24,6 +25,7 @@ export function App() {
     tree: state.tree,
     locked: state.locked,
     mode: state.mode,
+    ink: state.ink,
   }
   const shareMenu = (
     <ShareMenu
@@ -46,6 +48,7 @@ export function App() {
             scene={state.scene}
             reduced={state.reduced}
             rain={state.rain}
+            ink={state.ink}
             onToggle={state.toggleView}
             onOverhead={state.setOverhead}
           />
@@ -81,6 +84,7 @@ export function App() {
           </>
         )}
         <SeasonBar season={state.season} onChange={state.setSeason} />
+        <InkStyleBar ink={state.ink} onChange={state.setInk} />
         <TreeRow tree={state.tree} season={state.season} onChange={state.setTree} />
         {state.webgl && <HintPill overhead={state.overhead} onToggle={state.toggleView} />}
       </footer>

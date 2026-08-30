@@ -25,6 +25,8 @@ export interface SceneState {
   zoom: number
   /** Magnification the camera is gliding to (overhead always returns to 1). */
   zoomTarget: number | null
+  /** 0 = plants, 1 = colour-block mosaic. Eased independently of pitch. */
+  inkMix: number
 }
 
 export type SceneRef = { current: SceneState }

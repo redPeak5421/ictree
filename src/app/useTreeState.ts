@@ -13,7 +13,7 @@ import { easeInOutCubic, isOverhead, OVERHEAD, SEASON_MS, squareYaw } from '../s
 import type { SceneState } from '../scene/sceneState'
 import { VIEW_PITCH, VIEW_YAW } from '../scene/tree'
 import type { TreeSpecies } from '../scene/treeSpecies'
-import { buildShareSearch, parseShareParams, type AppMode, type ShareState } from '../share/params'
+import { buildShareSearch, parseShareParams, type AppMode, type InkStyle, type ShareState } from '../share/params'
 import { isWrapped, wrapSecret } from '../share/secret'
 
 function detectWebgl(): boolean {
@@ -45,6 +45,7 @@ export function useTreeState() {
   const [locked, setLocked] = useState(startLocked)
   const [season, setSeason] = useState<Season>(initial.season)
   const [tree, setTree] = useState<TreeSpecies>(initial.tree)
+  const [ink, setInk] = useState<InkStyle>(initial.ink)
   const [muted, setMuted] = useState(true)
   const [rain, setRain] = useState(false)
   const [overhead, setOverhead] = useState(false)
@@ -66,6 +67,7 @@ export function useTreeState() {
     yawTarget: null,
     zoom: 1,
     zoomTarget: null,
+    inkMix: 0,
   })
 
   useEffect(() => {
@@ -108,12 +110,12 @@ export function useTreeState() {
   }, [mode, payload])
 
   useEffect(() => {
-    const search = buildShareSearch({ url: payload, season, tree, locked, mode })
+    const search = buildShareSearch({ url: payload, season, tree, locked, mode, ink })
     const next = `${window.location.pathname}${search}`
     if (`${window.location.pathname}${window.location.search}` !== next) {
       history.replaceState(null, '', next)
     }
-  }, [payload, season, tree, locked, mode])
+  }, [payload, season, tree, locked, mode, ink])
 
   useEffect(() => {
     const target = colorsOf(season, tree)
@@ -171,6 +173,7 @@ export function useTreeState() {
     setUrl(nextLocked ? DEFAULT_PAYLOAD : nextPayload)
     setSeason(next.season)
     setTree(next.tree)
+    setInk(next.ink)
     const cam = scene.current
     cam.pitch = VIEW_PITCH
     cam.yaw = VIEW_YAW
@@ -205,6 +208,8 @@ export function useTreeState() {
     setSeason,
     tree,
     setTree,
+    ink,
+    setInk,
     muted,
     toggleMuted,
     rain,

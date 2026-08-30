@@ -98,9 +98,9 @@ export function fillerShapeFor(species: TreeSpecies): LeafShape {
 }
 
 /**
- * The shape the QR-coverage leaves are built from: a cluster of the species'
- * leaves as one mass. A single needle, blade, or star cannot fill a module
- * from above; the cluster can, and keeps the species' edge from the side.
+ * The shape the QR-coverage leaves are built from. The silhouette stays a
+ * solid cluster so a module still scans from above; the texture is the
+ * species' own leaves or needles, not a filled disc.
  */
 export function canopyShapeFor(species: TreeSpecies): LeafShape {
   return `${species}Canopy`

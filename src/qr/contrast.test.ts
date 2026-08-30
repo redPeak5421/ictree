@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { colorsOf } from '../scene/palettes'
+import { colorsOf, hexRgb } from '../scene/palettes'
+import { isGrassCell } from '../scene/treeSpecies'
 import { encodeGrid } from './encode'
-import { moduleRgb } from './contrast'
+import { lumaOfHex, moduleFillHex, moduleRgb, moduleViewHex } from './contrast'
 
-/** The grey a decoder sees: the brighter of the BT.601 and BT.709 conversions, as `contrast.ts` pins it. */
+/** The grey a decoder sees: the brighter of the BT.601 and BT.709 conversions. */
 function luma([r, g, b]: [number, number, number]): number {
   return Math.max(
     (0.299 * r + 0.587 * g + 0.114 * b) / 255,
@@ -11,36 +12,77 @@ function luma([r, g, b]: [number, number, number]): number {
   )
 }
 
-describe('module mosaic cohesion', () => {
-  it('keeps neighbouring dark modules in a tight ink band', () => {
+function dist(hex: string, rgb: [number, number, number]): number {
+  const [r, g, b] = hexRgb(hex)
+  return Math.hypot(r - rgb[0], g - rgb[1], b - rgb[2])
+}
+
+describe('module mosaic colour', () => {
+  it('keeps the tree hue instead of crushing every dark module into one ink grey', () => {
     const grid = encodeGrid('https://example.com/')
-    const colors = colorsOf('summer', 'cherry')
-    const dark = grid.cells.filter((cell) => cell.dark && cell.kind === 'dark')
-    const lumas = dark.map((cell) => luma(moduleRgb(cell, colors, 1)))
-    const min = Math.min(...lumas)
-    const max = Math.max(...lumas)
-    expect(max - min).toBeLessThanOrEqual(0.08)
-    expect(min).toBeGreaterThanOrEqual(0.38)
-    expect(max).toBeLessThanOrEqual(0.5)
+    const cell = grid.cells.find((item) => item.dark && item.kind === 'dark' && item.x > 8 && item.y > 8)!
+    const spring = moduleRgb(cell, colorsOf('spring', 'cherry'), 1, grid.size)
+    const summer = moduleRgb(cell, colorsOf('summer', 'cherry'), 1, grid.size)
+    expect(spring[0]).toBeGreaterThan(spring[1] + 8)
+    expect(summer[1]).toBeGreaterThan(summer[0] + 8)
+    expect(luma(spring)).toBeGreaterThan(0.4)
+    expect(luma(spring)).toBeLessThan(0.5)
   })
 
-  it('keeps the spring cherry pink and the summer cherry green in the mosaic', () => {
-    const grid = encodeGrid('https://example.com/')
-    const cell = grid.cells.find((item) => item.dark && item.kind === 'dark')!
-    const [sr, sg] = moduleRgb(cell, colorsOf('spring', 'cherry'), 1)
-    expect(sr).toBeGreaterThan(sg + 12)
-    const [ur, ug] = moduleRgb(cell, colorsOf('summer', 'cherry'), 1)
-    expect(ug).toBeGreaterThan(ur + 12)
+  it('keeps a pale spring canopy well above the old ink band', () => {
+    const hex = colorsOf('spring', 'cherry').foliage
+    expect(lumaOfHex(hex)).toBeGreaterThan(0.7)
   })
 
-  it('lifts the spring mosaic a shade paler than summer without leaving the ink band', () => {
+  it('keeps light modules cream-bright and darker modules below the field', () => {
     const grid = encodeGrid('https://example.com/')
-    const cell = grid.cells.find((item) => item.dark && item.kind === 'dark')!
-    const spring = luma(moduleRgb(cell, colorsOf('spring', 'maple'), 1))
-    const summer = luma(moduleRgb(cell, colorsOf('summer', 'maple'), 1))
-    const autumn = luma(moduleRgb(cell, colorsOf('autumn', 'maple'), 1))
-    expect(spring).toBeGreaterThan(summer + 0.02)
-    expect(autumn).toBeLessThan(summer)
-    expect(spring).toBeLessThanOrEqual(0.5)
+    const colors = colorsOf('autumn', 'maple')
+    const dark = grid.cells.find((cell) => cell.dark)!
+    const light = grid.cells.find((cell) => !cell.dark)!
+    const darkL = luma(moduleRgb(dark, colors, 1, grid.size))
+    const lightL = luma(moduleRgb(light, colors, 1, grid.size))
+    expect(lightL).toBeGreaterThan(0.85)
+    expect(darkL).toBeLessThan(lightL - 0.08)
+  })
+
+  it('paints meadow tiles as solid grass and canopy tiles as the tree', () => {
+    const grid = encodeGrid('https://example.com/')
+    const colors = colorsOf('autumn', 'maple')
+    const grass = grid.cells.find((cell) => cell.dark && isGrassCell(cell.x, cell.y, grid.size))!
+    const canopy = grid.cells.find((cell) => cell.dark && !isGrassCell(cell.x, cell.y, grid.size))!
+    const grassRgb = moduleRgb(grass, colors, 1, grid.size)
+    const canopyRgb = moduleRgb(canopy, colors, 1, grid.size)
+    expect(Math.min(dist(colors.grass, grassRgb), dist(colors.grassTip, grassRgb))).toBeLessThan(
+      dist(colors.foliage, grassRgb),
+    )
+    expect(dist(colors.foliage, canopyRgb)).toBeLessThan(dist(colors.grass, canopyRgb))
+    expect(moduleFillHex(grass, colors, grid.size)).not.toBe(moduleFillHex(canopy, colors, grid.size))
+  })
+
+  it('keeps autumn maple yellow a leaf colour on screen, not a crushed brown', () => {
+    const grid = encodeGrid('https://example.com/')
+    const colors = colorsOf('autumn', 'maple')
+    const probes = Array.from({ length: grid.size * grid.size }, (_, i) => ({
+      x: i % grid.size,
+      y: Math.floor(i / grid.size),
+      dark: true,
+      kind: 'dark' as const,
+    })).filter((cell) => !isGrassCell(cell.x, cell.y, grid.size))
+    const scan = probes.map((cell) => lumaOfHex(moduleFillHex(cell, colors, grid.size)))
+    const view = probes.map((cell) => lumaOfHex(moduleViewHex(cell, colors, grid.size)))
+    expect(Math.max(...scan)).toBeLessThan(0.46)
+    expect(Math.max(...view)).toBeGreaterThan(0.52)
+    expect(Math.max(...view)).toBeLessThan(0.59)
+    expect(Math.min(...view)).toBeLessThan(0.45)
+    expect(Math.max(...view)).toBeGreaterThan(Math.max(...scan))
+  })
+
+  it('does not wash grass and canopy into one shared fill', () => {
+    const grid = encodeGrid('https://example.com/')
+    const colors = colorsOf('autumn', 'maple')
+    const fills = new Set(
+      grid.cells.filter((cell) => cell.dark).map((cell) => moduleFillHex(cell, colors, grid.size)),
+    )
+    expect(fills.size).toBeGreaterThan(2)
   })
 })

@@ -177,7 +177,8 @@ describe('grass layout', () => {
     expect(buildMeadowCarpet(grid, seed)).toEqual(carpet)
     expect(plants.length).toBeGreaterThan(expectedCells * 20)
     expect(Math.max(...plants.map((item) => item.height))).toBeLessThanOrEqual(1.1)
-    expect(plants.every((item) => item.gust === 0)).toBe(true)
+    expect(plants.every((item) => item.kind === 'meadow' && item.gust === 0)).toBe(true)
+    expect(carpet.every((leaf) => leaf.kind === 'meadow')).toBe(true)
   })
 
   it('stands finder blades taller and more vertical than the lawn band', () => {

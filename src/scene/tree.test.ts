@@ -55,6 +55,16 @@ describe('buildTree', () => {
     expect(Math.abs(trunk.position[2])).toBeLessThan(0.6)
   })
 
+  it('grows a trunk that tapers into finer limbs without becoming a chimney', () => {
+    const trunks = tree.branches.filter((branch) => branch.shade === 0)
+    const limbs = tree.branches.filter((branch) => branch.shade === 1)
+    expect(trunks.length).toBeGreaterThan(0)
+    const trunkR = Math.max(...trunks.map((branch) => branch.scale[0]))
+    const twigR = Math.min(...limbs.map((branch) => branch.scale[0]))
+    expect(trunkR).toBeGreaterThan(twigR * 3)
+    expect(trunkR).toBeLessThan((grid.size + 2) * 0.042)
+  })
+
   it('keeps every leaf over its own dark module, never over a light one', () => {
     for (const leaf of tree.leaves) {
       const [cx, cz] = leaf.cell

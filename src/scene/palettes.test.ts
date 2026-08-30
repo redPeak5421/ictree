@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { colorsOf, foliageTones, groundCoverOf, hexRgb, lerpColors, ornamentOf, type Season } from './palettes'
+import { colorsOf, foliageTones, grassTones, groundCoverOf, hexRgb, lerpColors, ornamentOf, type Season } from './palettes'
 import { TREE_IDS } from './treeSpecies'
 
 const SEASONS: Season[] = ['spring', 'summer', 'autumn']
@@ -118,5 +118,20 @@ describe('seasonal ornaments and ground cover', () => {
       expect(groundCoverOf('autumn', tree)).toBe('meadow')
     }
     expect(groundCoverOf('summer', 'apple')).toBe('dandelion')
+  })
+
+  it('keeps turf in a mixed meadow, not a cartoon gold plate', () => {
+    for (const season of ['spring', 'summer'] as const) {
+      const { grass, grassTip } = colorsOf(season, 'apple')
+      expect(isGreenDominant(grass)).toBe(true)
+      expect(isGreenDominant(grassTip)).toBe(true)
+      const tones = grassTones(colorsOf(season, 'apple'))
+      expect(new Set(tones).size).toBe(4)
+    }
+    const autumn = colorsOf('autumn', 'apple')
+    const [r, g, b] = hexRgb(autumn.grass)
+    expect(g).toBeGreaterThanOrEqual(r - 6)
+    expect(g).toBeGreaterThan(b + 20)
+    expect(isYellowDominant(autumn.grass)).toBe(false)
   })
 })

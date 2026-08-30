@@ -362,8 +362,15 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     const len = Math.hypot(dx, dy, dz)
     if (len < 1e-4) continue
     let r = Math.max(tipR, (radius[i]! + radius[q.parent]!) / 2)
-    // Flare at the base of the trunk.
-    if (q.depth <= trunkSteps) r *= 1 + 0.35 * (1 - q.depth / trunkSteps) ** 2
+    // The pipe model stays twig-thin on a short stem. Lift the bole just
+    // enough to read as a trunk, not a chimney.
+    const bole = island * 0.03
+    if (q.depth <= trunkSteps) {
+      const flare = (1 - q.depth / trunkSteps) ** 2
+      r = Math.max(r, bole * (0.88 + 0.18 * flare))
+    } else if (q.depth <= trunkSteps + 2) {
+      r = Math.max(r, bole * 0.28)
+    }
     branches.push({
       position: [(p.x + q.x) / 2, (p.y + q.y) / 2, (p.z + q.z) / 2],
       quaternion: quatFromUnitY(dx, dy, dz),
@@ -444,14 +451,10 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     const bounds = boundsOf(cell, 0)
     const ly = Math.min(crownTopHeight + 0.9, Math.max(crownBot - 0.5, y))
     const lift = (ly - crownBot) / crownH
-    // The visible bulk is the species' own element; clusters keep the mass
-    // full. Twigs and withes are open shapes, so those crowns lean harder on
-    // them or the conifer reads as a broadleaf again.
-    // A cluster disc among single leaves reads as "not a leaf", so the
-    // visible mass is the species' element alone; twigs and withes keep a
-    // few clusters for body.
-    const elementShare = detailShape === 'pineTwig' || detailShape === 'willowWithe' ? 0.9 : 1
-    const shape: LeafShape = rng() < elementShare ? detailShape : canopyShape
+    // Extra crown mass is the species' own leaf, twig, or withe. Cluster
+    // cards stay on the QR slots; mixing those plates into the filler is
+    // what read as "not a leaf".
+    const shape: LeafShape = detailShape
     const phi = rng() * Math.PI * 2
     // A willow withe hangs: its plane is upright, so from above it is a line
     // and it may run longer than a flat leaf could. A pine twig angles up.

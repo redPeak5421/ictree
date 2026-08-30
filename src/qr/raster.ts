@@ -21,7 +21,7 @@ export function rasterQr(grid: ModuleGrid, colors: SceneColors, opts: RasterOpti
       const qx = gx - opts.quiet
       const qy = gy - opts.quiet
       const inside = qx >= 0 && qy >= 0 && qx < grid.size && qy < grid.size
-      const rgb = inside ? moduleRgb(lookup.get(`${qx},${qy}`)!, colors, opts.morphT) : cream
+      const rgb = inside ? moduleRgb(lookup.get(`${qx},${qy}`)!, colors, opts.morphT, grid.size) : cream
       const x0 = gx * opts.modulePx
       const y0 = gy * opts.modulePx
       for (let py = 0; py < opts.modulePx; py++) {

@@ -16,6 +16,7 @@ const STATE = {
   tree: 'maple',
   locked: false,
   mode: 'create',
+  ink: 'plants',
 } as const
 
 const MIN_PNG = Uint8Array.from([

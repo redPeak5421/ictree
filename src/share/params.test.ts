@@ -9,14 +9,17 @@ describe('share params', () => {
       tree: 'maple',
       locked: true,
       mode: 'reveal',
+      ink: 'blocks',
     })
     expect(search).toContain('t=maple')
+    expect(search).toContain('k=b')
     expect(parseShareParams(search)).toEqual({
       url: 'https://example.com/a b',
       season: 'spring',
       tree: 'maple',
       locked: true,
       mode: 'reveal',
+      ink: 'blocks',
     })
   })
 
@@ -27,6 +30,7 @@ describe('share params', () => {
       tree: 'cherry',
       locked: false,
       mode: 'create',
+      ink: 'plants',
     })
     expect(parseShareParams('?s=winter&t=banana&u=ok')).toEqual({
       url: 'ok',
@@ -34,6 +38,7 @@ describe('share params', () => {
       tree: 'cherry',
       locked: false,
       mode: 'create',
+      ink: 'plants',
     })
     expect(parseShareParams('?u=gv1.abc&s=summer')).toEqual({
       url: 'gv1.abc',
@@ -41,6 +46,7 @@ describe('share params', () => {
       tree: 'cherry',
       locked: true,
       mode: 'reveal',
+      ink: 'plants',
     })
   })
 
@@ -60,8 +66,22 @@ describe('share params', () => {
       tree: 'cherry',
       locked: false,
       mode: 'create',
+      ink: 'plants',
     })
     expect(search).toContain('u=%E4%BD%A0%E5%A5%BD')
     expect(parseShareParams(search).url).toBe('你好')
+  })
+
+  it('opens a colour-block grove from k=b and defaults to plants', () => {
+    expect(parseShareParams('?u=ok&k=b').ink).toBe('blocks')
+    expect(parseShareParams('?u=ok').ink).toBe('plants')
+    expect(buildShareSearch({
+      url: 'ok',
+      season: 'autumn',
+      tree: 'cherry',
+      locked: false,
+      mode: 'create',
+      ink: 'plants',
+    })).not.toContain('k=')
   })
 })

@@ -9,6 +9,7 @@ import {
 
 describe('normalizePayload', () => {
   it('uses the default site URL when input is empty', () => {
+    expect(DEFAULT_PAYLOAD).toBe('https://www.cloudflare.com/')
     expect(normalizePayload('')).toBe(DEFAULT_PAYLOAD)
     expect(normalizePayload('   ')).toBe(DEFAULT_PAYLOAD)
   })

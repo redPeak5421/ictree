@@ -31,6 +31,8 @@ export interface Messages {
   seasons: Record<Season, string>
   tree: string
   trees: Record<TreeSpecies, string>
+  inkStyle: string
+  inkStyles: { plants: string; blocks: string }
   share: string
   shareGroup: string
   exportGroup: string
@@ -75,6 +77,8 @@ const en: Messages = {
   seasons: { spring: 'Spring', summer: 'Summer', autumn: 'Autumn' },
   tree: 'Tree',
   trees: { cherry: 'Cherry', apple: 'Apple', pine: 'Pine', willow: 'Willow', maple: 'Maple' },
+  inkStyle: 'Style',
+  inkStyles: { plants: 'Plants', blocks: 'Blocks' },
   share: 'Share',
   shareGroup: 'Share',
   exportGroup: 'Export',
@@ -124,6 +128,8 @@ const zhCN: Messages = {
   seasons: { spring: '春', summer: '夏', autumn: '秋' },
   tree: '树种',
   trees: { cherry: '樱花', apple: '苹果', pine: '松树', willow: '柳树', maple: '枫树' },
+  inkStyle: '样式',
+  inkStyles: { plants: '植物', blocks: '色块' },
   share: '分享',
   shareGroup: '分享',
   exportGroup: '导出',
@@ -173,6 +179,8 @@ const zhTW: Messages = {
   seasons: { spring: '春', summer: '夏', autumn: '秋' },
   tree: '樹種',
   trees: { cherry: '櫻花', apple: '蘋果', pine: '松樹', willow: '柳樹', maple: '楓樹' },
+  inkStyle: '樣式',
+  inkStyles: { plants: '植物', blocks: '色塊' },
   share: '分享',
   shareGroup: '分享',
   exportGroup: '匯出',
@@ -222,6 +230,8 @@ const ja: Messages = {
   seasons: { spring: '春', summer: '夏', autumn: '秋' },
   tree: '樹種',
   trees: { cherry: '桜', apple: 'りんご', pine: '松', willow: '柳', maple: 'もみじ' },
+  inkStyle: '表示',
+  inkStyles: { plants: '植物', blocks: '色ブロック' },
   share: '共有',
   shareGroup: '共有',
   exportGroup: '書き出し',
@@ -271,6 +281,8 @@ const ru: Messages = {
   seasons: { spring: 'Весна', summer: 'Лето', autumn: 'Осень' },
   tree: 'Дерево',
   trees: { cherry: 'Сакура', apple: 'Яблоня', pine: 'Сосна', willow: 'Ива', maple: 'Клён' },
+  inkStyle: 'Вид',
+  inkStyles: { plants: 'Растения', blocks: 'Плитки' },
   share: 'Поделиться',
   shareGroup: 'Поделиться',
   exportGroup: 'Экспорт',
@@ -320,6 +332,8 @@ const fr: Messages = {
   seasons: { spring: 'Printemps', summer: 'Été', autumn: 'Automne' },
   tree: 'Arbre',
   trees: { cherry: 'Cerisier', apple: 'Pommier', pine: 'Pin', willow: 'Saule', maple: 'Érable' },
+  inkStyle: 'Style',
+  inkStyles: { plants: 'Plantes', blocks: 'Blocs' },
   share: 'Partager',
   shareGroup: 'Partager',
   exportGroup: 'Exporter',

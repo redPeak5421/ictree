@@ -26,6 +26,7 @@ export interface VegetationInstance {
 
 export interface FinderVegetationInstance extends VegetationInstance {
   region: 'finder'
+  kind: 'finder' | 'meadow'
   form: 'blade' | 'broad'
   /** Centre of the dark finder module that owns this plant. */
   cell: [number, number]
@@ -46,6 +47,7 @@ export interface FinderCarpetInstance {
   ink: number
   tone: number
   slot: number
+  kind: 'finder' | 'meadow'
 }
 
 export interface GroundLitterInstance {
@@ -339,6 +341,7 @@ function buildInkCarpet(
   seed: number,
   salt: string,
   belongs: (x: number, y: number, size: number) => boolean,
+  kind: 'finder' | 'meadow',
 ): FinderCarpetInstance[] {
   const rng = mulberry32((seed ^ hashString(salt)) >>> 0)
   const half = (grid.size - 1) / 2
@@ -357,6 +360,7 @@ function buildInkCarpet(
       ink: FINDER_INK,
       tone: 1,
       slot: 0,
+      kind,
     })
     qrSlots(FINDER_CARPET_SLOTS - 1, rng).forEach((slot) => {
       result.push({
@@ -367,6 +371,7 @@ function buildInkCarpet(
         ink: FINDER_INK,
         tone: (slot.id + 1) % 4,
         slot: slot.id + 1,
+        kind,
       })
     })
   }
@@ -375,12 +380,12 @@ function buildInkCarpet(
 }
 
 export function buildFinderCarpet(grid: ModuleGrid, seed: number): FinderCarpetInstance[] {
-  return buildInkCarpet(grid, seed, 'finder-carpet', isCornerCell)
+  return buildInkCarpet(grid, seed, 'finder-carpet', isCornerCell, 'finder')
 }
 
 /** Same packed occupancy as the finder, on the QR rim's dark modules. */
 export function buildMeadowCarpet(grid: ModuleGrid, seed: number): FinderCarpetInstance[] {
-  return buildInkCarpet(grid, seed, 'meadow-carpet', isEdgeCell)
+  return buildInkCarpet(grid, seed, 'meadow-carpet', isEdgeCell, 'meadow')
 }
 
 /**
@@ -411,32 +416,36 @@ function buildInkVegetation(
       front: cz + local.front,
     }
     const meadow = kind === 'meadow'
-    const count = (meadow ? 52 : 70) + Math.floor(rng() * (meadow ? 12 : 16))
+    const count = (meadow ? 58 : 70) + Math.floor(rng() * (meadow ? 14 : 16))
     let placed = 0
     let attempts = 0
     while (placed < count && attempts < count * 10) {
       attempts++
-      const lawn = placed < (meadow ? 34 : 28)
-      const form = placed % (meadow ? 4 : 5) === 0 ? 'broad' : 'blade'
+      const lawn = placed < (meadow ? 40 : 28)
+      const form = placed % (meadow ? 8 : 5) === 0 ? 'broad' : 'blade'
       const radius = Math.sqrt(rng()) * FINDER_ROOT_RADIUS
       const angle = rng() * Math.PI * 2
       const width = form === 'broad'
         ? 0.2 + rng() * 0.16
         : lawn
-          ? 0.14 + rng() * 0.1
-          : 0.12 + rng() * 0.12
+          ? (meadow ? 0.09 + rng() * 0.07 : 0.14 + rng() * 0.1)
+          : meadow
+            ? 0.09 + rng() * 0.08
+            : 0.12 + rng() * 0.12
       const height = form === 'broad'
-        ? (meadow ? 0.28 + rng() * 0.4 : 0.42 + rng() * 0.55)
+        ? (meadow ? 0.22 + rng() * 0.32 : 0.42 + rng() * 0.55)
         : lawn
           ? 0.16 + rng() * 0.26
           : meadow
-            ? 0.36 + rng() * 0.52
+            ? 0.32 + rng() * 0.48
             : 0.72 + rng() * (FINDER_BLADE_HEIGHT - 0.72)
       const lean = form === 'broad'
         ? 0.12 + rng() * 0.26
         : lawn
           ? 0.16 + rng() * 0.22
-          : 0.06 + rng() * (FINDER_BLADE_LEAN - 0.06)
+          : meadow
+            ? 0.1 + rng() * 0.28
+            : 0.06 + rng() * (FINDER_BLADE_LEAN - 0.06)
       const heading = rng() * Math.PI * 2
       const root: [number, number, number] = [
         cx + Math.cos(angle) * radius,
@@ -452,6 +461,7 @@ function buildInkVegetation(
       const phase = rng() * Math.PI * 2
       result.push({
         region: 'finder',
+        kind,
         form,
         root,
         clump: [cx, cz],
@@ -472,6 +482,7 @@ function buildInkVegetation(
       if (insideBounds(crossTipX, crossTipZ, halfW, bounds)) {
         result.push({
           region: 'finder',
+          kind,
           form,
           root,
           clump: [cx, cz],

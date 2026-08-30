@@ -9,16 +9,16 @@ import {
 } from './grassLayout'
 import { hashString } from './hash'
 import { vegetationTexture } from './leafTexture'
-import { groundCoverOf, mixHex, type SceneColors, type Season } from './palettes'
+import { grassTones, groundCoverOf, mixHex, type SceneColors, type Season } from './palettes'
 import type { SceneRef } from './sceneState'
 import type { TreeSpecies } from './treeSpecies'
-import { sceneryOpacity } from './view'
+import { plantInkOpacity, sceneryOpacity } from './view'
 
 function vegetationColor(form: VegetationForm, tone: number, colors: SceneColors): string {
-  const amount = tone / 3
-  if (form === 'broad') return mixHex(colors.accent, colors.grassTip, 0.18 + amount * 0.35)
-  if (form === 'seed') return mixHex(colors.grassTip, colors.accent, 0.08 + amount * 0.22)
-  return mixHex(colors.grass, colors.grassTip, amount * 0.9)
+  const meadow = grassTones(colors)
+  if (form === 'broad') return mixHex(colors.accent, meadow[2]!, 0.22 + (tone / 3) * 0.3)
+  if (form === 'seed') return mixHex(meadow[3]!, colors.accent, 0.1 + (tone / 3) * 0.2)
+  return meadow[tone] ?? meadow[1]!
 }
 
 function SceneryGroup({
@@ -42,11 +42,11 @@ function SceneryGroup({
   useFrame(({ clock }) => {
     const inst = mesh.current
     if (!inst) return
-    const { colors, pitch } = scene.current
+    const { colors, pitch, inkMix } = scene.current
     // Rim clumps sit on the island lip. Trunk rosettes can land on light
     // modules. Either way a pale tuft becomes ink to a decoder, so they fade
     // on the way overhead like the weather.
-    const opacity = sceneryOpacity(pitch)
+    const opacity = sceneryOpacity(pitch) * plantInkOpacity(inkMix)
     const mat = material.current
     if (mat) {
       mat.opacity = opacity

@@ -1,13 +1,14 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Color, InstancedMesh, Object3D, type Texture } from 'three'
-import { toLumaHex } from '../qr/contrast'
+import { lumaOfHex, toLumaHex } from '../qr/contrast'
 import type { FinderCarpetInstance, FinderVegetationInstance } from './grassLayout'
-import { carpetTexture, fruitTexture, leafTexture, petalTexture, vegetationTexture } from './leafTexture'
+import { barkTexture, carpetTexture, fruitTexture, leafTexture, petalTexture, vegetationTexture } from './leafTexture'
 import { LEAF_SHAPES, type LeafShape } from './leafShape'
 import {
   finderInkTones,
   foliageTones,
+  grassTones,
   mixHex,
   ornamentOf,
   type Season,
@@ -82,6 +83,7 @@ export function TreeFoliage({
   const carpetMap = useMemo(() => carpetTexture(), [])
   const blossomMap = useMemo(() => petalTexture(), [])
   const fruitMap = useMemo(() => fruitTexture('round'), [])
+  const barkMap = useMemo(() => barkTexture(), [])
   const colorKey = useRef('')
   const ornamentKind = ornamentOf(season, tree)
   // In spring the cherry's single leaves are drawn as blossoms. The blossom
@@ -259,14 +261,17 @@ export function TreeFoliage({
     }
 
     const finderTones = finderInkTones(colors)
+    const meadowTones = grassTones(colors)
     const finderCache = new Map<string, Color>()
     for (const [mesh, items] of finderMeshes) {
       if (!mesh) continue
       items.forEach((item, index) => {
-        const key = `tuft|${item.tone}|${item.ink}`
+        const meadow = item.kind === 'meadow'
+        const key = `${meadow ? 'm' : 'f'}|${item.tone}|${item.ink}`
         let color = finderCache.get(key)
         if (!color) {
-          color = new Color(toLumaHex(finderTones[item.tone]!, item.ink + 0.02 + lift))
+          const source = meadow ? meadowTones[item.tone]! : finderTones[item.tone]!
+          color = new Color(meadow ? source : toLumaHex(source, lumaOfHex(colors.finder)))
           finderCache.set(key, color)
         }
         mesh.setColorAt(index, color)
@@ -277,10 +282,12 @@ export function TreeFoliage({
     const carpetMesh = finderCarpetRef.current
     if (carpetMesh) {
       groups.finder.carpet.forEach((leaf, index) => {
-        const key = `c|${leaf.tone}|${leaf.ink}`
+        const meadow = leaf.kind === 'meadow'
+        const key = `${meadow ? 'mc' : 'c'}|${leaf.tone}|${leaf.ink}`
         let color = finderCache.get(key)
         if (!color) {
-          color = new Color(toLumaHex(finderTones[leaf.tone]!, leaf.ink + lift))
+          const source = meadow ? meadowTones[leaf.tone]! : finderTones[leaf.tone]!
+          color = new Color(meadow ? source : toLumaHex(source, lumaOfHex(colors.finder)))
           finderCache.set(key, color)
         }
         carpetMesh.setColorAt(index, color)
@@ -338,8 +345,8 @@ export function TreeFoliage({
   return (
     <group>
       <instancedMesh ref={branchRef} args={[undefined, undefined, rig.branches.length]} key={`b${rig.branches.length}`} frustumCulled={false}>
-        <cylinderGeometry args={[0.9, 1, 1, 8]} />
-        <meshBasicMaterial />
+        <cylinderGeometry args={[0.88, 1, 1, 12]} />
+        <meshBasicMaterial map={barkMap} />
       </instancedMesh>
       {LEAF_SHAPES.map((shape) => (
         <instancedMesh

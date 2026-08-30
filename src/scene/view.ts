@@ -24,6 +24,35 @@ export function sceneryOpacity(pitch: number): number {
   return 1 - smoothstep(1.2, 1.48, pitch)
 }
 
+/**
+ * Colour-block ink follows the same camera move as the plant grove. Mix is
+ * the elevation, not a tap timer: the side view stays the tree, and the
+ * mosaic grows as the camera goes overhead. The band covers most of the
+ * 900ms glide so leaves have time to settle into tiles.
+ */
+export const INK_FADE_RATE = 8
+
+export function inkMixTarget(blocks: boolean, pitch: number): number {
+  if (!blocks) return 0
+  return smoothstep(0.52, 1.48, pitch)
+}
+
+export function stepInkMix(current: number, target: number, dt: number, instant = false): number {
+  if (instant) return target
+  const next = current + (target - current) * (1 - Math.exp(-dt * INK_FADE_RATE))
+  if (next < 0.002 && target <= next) return 0
+  if (next > 0.998 && target >= next) return 1
+  return next
+}
+
+export function plantInkOpacity(mix: number): number {
+  return 1 - smoothstep(0.05, 0.88, mix)
+}
+
+export function blockInkOpacity(mix: number): number {
+  return smoothstep(0.12, 0.95, mix)
+}
+
 export function isOverhead(pitch: number): boolean {
   return pitch >= OVERHEAD - 1e-3
 }

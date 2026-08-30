@@ -1,4 +1,5 @@
-import { foliageTones, hexRgb, mixHex, rgbHex, type SceneColors } from '../scene/palettes'
+import { foliageTones, hexRgb, rgbHex, type SceneColors } from '../scene/palettes'
+import { isGrassCell } from '../scene/treeSpecies'
 import type { ModuleCell } from './types'
 
 /**
@@ -23,23 +24,11 @@ function setLuma(rgb: [number, number, number], target: number): [number, number
   return [Math.min(255, rgb[0] * s), Math.min(255, rgb[1] * s), Math.min(255, rgb[2] * s)]
 }
 
-function jitter(
-  rgb: [number, number, number],
-  salt: number,
-  amount: number,
-): [number, number, number] {
-  const j = (n: number) => {
-    const t = (((Math.sin(salt * 12.9898 + n * 78.233) * 43758.5453) % 1) + 1) % 1
-    return (t - 0.5) * 2 * amount
-  }
-  return [rgb[0] + j(1), rgb[1] + j(2), rgb[2] + j(3)]
-}
-
-const CREAM = '#f2efe6'
+export const CREAM = '#f2efe6'
 
 /**
- * Tight ink band: neighbouring dark modules stay one colour family so the
- * mosaic reads as a lawn, not a bag of tiles.
+ * Reserved for the tree's own ink samples. The 3D mosaic no longer crushes
+ * every dark module into this band — pale spring stays pale.
  */
 function inkLuma(bucket: number): number {
   return 0.418 + (bucket & 1) * 0.01
@@ -52,9 +41,8 @@ export function lumaOfHex(hex: string): number {
 }
 
 /** Recolour `hex` to sit at exactly `luma`, keeping its hue. */
-export function toLumaHex(hex: string, luma: number): string {
-  const [r, g, b] = setLuma(hexRgb(hex), luma)
-  return rgbHex(r, g, b)
+export function toLumaHex(hex: string, target: number): string {
+  return rgbHex(...setLuma(hexRgb(hex), target))
 }
 
 function bucketOf(cell: ModuleCell): number {
@@ -75,13 +63,40 @@ export function moduleInkLuma(cell: ModuleCell): number {
   return structural ? 0.33 + (bucket & 1) * 0.012 : inkLuma(bucket)
 }
 
+/**
+ * Colour-block ink: meadow tiles are solid grass, canopy tiles are the
+ * tree's own leaf colours. Families stay apart — no global wash.
+ * 8px jsQR needs dark modules at or below 0.45. The on-screen grove is
+ * much larger, so view tiles keep a paler cap and already-dark hues
+ * stay as painted instead of being crushed to one muddy ink.
+ */
+const SCAN_LUMA = 0.45
+const VIEW_LUMA = 0.58
+
+function fillAt(hex: string, cap: number): string {
+  return lumaOfHex(hex) <= cap ? hex : toLumaHex(hex, cap)
+}
+
+export function moduleFillHex(cell: ModuleCell, colors: SceneColors, size: number, cap = SCAN_LUMA): string {
+  if (!cell.dark) return CREAM
+  const bucket = bucketOf(cell)
+  if (isGrassCell(cell.x, cell.y, size)) {
+    return fillAt(bucket < 2 ? colors.grass : colors.grassTip, cap)
+  }
+  const tones = foliageTones(colors)
+  return fillAt(tones[bucket]!, cap)
+}
+
+export function moduleViewHex(cell: ModuleCell, colors: SceneColors, size: number): string {
+  return moduleFillHex(cell, colors, size, VIEW_LUMA)
+}
+
 export function moduleRgb(
   cell: ModuleCell,
   colors: SceneColors,
   morphT: number,
+  size: number,
 ): [number, number, number] {
-  const salt = cell.x * 73856093 + cell.y * 19349663
-  const bucket = bucketOf(cell)
   const stone = hexRgb(cell.dark ? colors.pathDark : colors.pathLight)
 
   if (!cell.dark) {
@@ -94,13 +109,7 @@ export function moduleRgb(
     return setLuma(mixed, 0.78 + morphT * 0.15)
   }
 
-  const structural = cell.kind === 'finder' || cell.kind === 'timing' || cell.kind === 'alignment'
-  const tones = foliageTones(colors)
-  const baseHex = structural
-    ? mixHex(colors.finder, colors.foliage, bucket < 2 ? 0.06 : 0.14)
-    : mixHex(tones[0]!, tones[2]!, bucket < 2 ? 0.18 : 0.42)
-
-  const art = setLuma(jitter(hexRgb(baseHex), salt, structural ? 3 : 6), moduleInkLuma(cell) + colors.inkLift)
+  const art = hexRgb(moduleFillHex(cell, colors, size))
   return [
     stone[0] + (art[0] - stone[0]) * morphT,
     stone[1] + (art[1] - stone[1]) * morphT,
@@ -108,7 +117,7 @@ export function moduleRgb(
   ]
 }
 
-export function moduleHex(cell: ModuleCell, colors: SceneColors, morphT: number): string {
-  const [r, g, b] = moduleRgb(cell, colors, morphT)
+export function moduleHex(cell: ModuleCell, colors: SceneColors, morphT: number, size: number): string {
+  const [r, g, b] = moduleRgb(cell, colors, morphT, size)
   return rgbHex(r, g, b)
 }

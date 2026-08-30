@@ -40,9 +40,9 @@ interface SeasonGround {
 }
 
 const GROUND: Record<Season, SeasonGround> = {
-  spring: { grass: '#6db83c', grassTip: '#cfe98a', inkLift: 0.03 },
-  summer: { grass: '#4a9f28', grassTip: '#8bd14a', inkLift: 0 },
-  autumn: { grass: '#cca63c', grassTip: '#e8d48a', inkLift: -0.02 },
+  spring: { grass: '#8ec45a', grassTip: '#c3e086', inkLift: 0.03 },
+  summer: { grass: '#7fb056', grassTip: '#c5dc82', inkLift: 0 },
+  autumn: { grass: '#7a8f40', grassTip: '#c8c070', inkLift: -0.02 },
 }
 
 /**
@@ -163,6 +163,19 @@ export function foliageTones(colors: SceneColors): [string, string, string, stri
     mixHex(colors.foliage, colors.foliageVar, 0.4),
     colors.foliageVar,
     mixHex(colors.foliage, colors.accent, 0.35),
+  ]
+}
+
+/**
+ * Mixed meadow: shadow olive, living mid-green, new growth, and a dry straw
+ * tip. Sampled from a close-up lawn so turf is not one cartoon lime.
+ */
+export function grassTones(colors: SceneColors): [string, string, string, string] {
+  return [
+    mixHex(colors.grass, '#3d4a18', 0.32),
+    colors.grass,
+    mixHex(colors.grass, colors.grassTip, 0.55),
+    mixHex(colors.grassTip, '#d8c878', 0.38),
   ]
 }
 

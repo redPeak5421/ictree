@@ -1,19 +1,21 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { NoToneMapping } from 'three'
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { Group, MeshBasicMaterial, NoToneMapping } from 'three'
 import type { ModuleGrid } from '../qr/types'
 import { OrbitCamera } from './camera'
 import { Grass } from './grass'
 import { Ground } from './ground'
 import { applyDrag, applyZoom, SNAP_PITCH, TAP_SLOP, wheelZoomFactor } from './orbit'
 import { Particles } from './particles/Particles'
+import { QrTiles } from './QrTiles'
 import type { SceneRef } from './sceneState'
 import { TreeFoliage } from './TreeFoliage'
 import { hashString } from './hash'
 import type { Season } from './palettes'
 import { buildTree, islandExtent } from './tree'
 import { resolveTreeChoice, type TreeSpecies } from './treeSpecies'
-import { OVERHEAD, squareYaw } from './view'
+import { OVERHEAD, blockInkOpacity, inkMixTarget, plantInkOpacity, stepInkMix, squareYaw } from './view'
+import type { InkStyle } from '../share/params'
 
 interface Pointer {
   id: number
@@ -31,6 +33,69 @@ const FLICK_MS = 80
 /** Longer than this between down and up is a hold, not a tap. */
 const TAP_MS = 600
 
+function fadeGroup(group: Group | null, opacity: number, flatten: number) {
+  if (!group) return
+  group.visible = opacity > 0.012
+  const settle = flatten > 0 ? 1 - (1 - opacity) * flatten : 1
+  group.scale.set(1, settle, 1)
+  group.traverse((obj) => {
+    const mat = (obj as { material?: MeshBasicMaterial | MeshBasicMaterial[] }).material
+    if (!mat) return
+    const list = Array.isArray(mat) ? mat : [mat]
+    for (const item of list) {
+      if (!('opacity' in item)) continue
+      item.transparent = true
+      item.opacity = opacity
+      item.depthWrite = opacity > 0.88
+      if ('alphaTest' in item) {
+        const cut = (item.userData.cut as number | undefined) ?? item.alphaTest
+        if (cut > 0) {
+          item.userData.cut = cut
+          item.alphaTest = cut * (0.25 + 0.75 * opacity)
+        }
+      }
+    }
+  })
+}
+
+/**
+ * Same camera-led conversion as the plant grove: mix follows pitch, so a
+ * tap to overhead does not swap the tree for tiles before the view turns.
+ */
+function InkDissolve({
+  scene,
+  ink,
+  reduced,
+  plants,
+  tiles,
+}: {
+  scene: SceneRef
+  ink: InkStyle
+  reduced: boolean
+  plants: ReactNode
+  tiles: ReactNode
+}) {
+  const plantRef = useRef<Group>(null)
+  const tileRef = useRef<Group>(null)
+  useEffect(() => () => {
+    scene.current.inkMix = 0
+  }, [scene])
+  useFrame((_, dt) => {
+    const state = scene.current
+    const target = inkMixTarget(ink === 'blocks', state.pitch)
+    state.inkMix = stepInkMix(state.inkMix, target, Math.min(dt, 0.05), reduced)
+    fadeGroup(plantRef.current, plantInkOpacity(state.inkMix), 0)
+    fadeGroup(tileRef.current, blockInkOpacity(state.inkMix), 0)
+  })
+  return (
+    <>
+      <group ref={plantRef}>{plants}</group>
+      <group ref={tileRef}>{tiles}</group>
+    </>
+  )
+}
+
+
 export function TreeCanvas({
   grid,
   tree,
@@ -38,6 +103,7 @@ export function TreeCanvas({
   scene,
   reduced,
   rain,
+  ink,
   onToggle,
   onOverhead,
 }: {
@@ -47,6 +113,7 @@ export function TreeCanvas({
   season: Season
   scene: SceneRef
   reduced: boolean
+  ink: InkStyle
   onToggle: () => void
   onOverhead: (overhead: boolean) => void
 }) {
@@ -197,8 +264,25 @@ export function TreeCanvas({
         onOverhead={onOverhead}
       />
       <Ground grid={grid} rig={rig} scene={scene} />
-      <Grass grid={grid} scene={scene} reduced={reduced} season={season} tree={tree} />
-      <TreeFoliage rig={rig} scene={scene} tree={tree} season={season} />
+      {ink === 'blocks' ? (
+        <InkDissolve
+          scene={scene}
+          ink={ink}
+          reduced={reduced}
+          plants={
+            <>
+              <Grass grid={grid} scene={scene} reduced={reduced} season={season} tree={tree} />
+              <TreeFoliage rig={rig} scene={scene} tree={tree} season={season} />
+            </>
+          }
+          tiles={<QrTiles grid={grid} scene={scene} rig={rig} />}
+        />
+      ) : (
+        <>
+          <Grass grid={grid} scene={scene} reduced={reduced} season={season} tree={tree} />
+          <TreeFoliage rig={rig} scene={scene} tree={tree} season={season} />
+        </>
+      )}
       <Particles grid={grid} scene={scene} reduced={reduced} species={rig.species} raining={rain} />
     </Canvas>
   )

@@ -8,7 +8,7 @@ import { foliageTones, mixHex } from './palettes'
 import type { SceneRef } from './sceneState'
 import { islandExtent, SLAB_H, type TreeRig } from './tree'
 import { leafTexture } from './leafTexture'
-import { sceneryOpacity } from './view'
+import { plantInkOpacity, sceneryOpacity } from './view'
 
 const dummy = new Object3D()
 const tint = new Color()
@@ -49,7 +49,7 @@ export function Ground({ grid, rig, scene }: { grid: ModuleGrid; rig: TreeRig; s
   }, [fallen])
 
   useFrame(() => {
-    const { colors, pitch } = scene.current
+    const { colors, pitch, inkMix } = scene.current
     const next = `${colors.pathLight}|${colors.pathEdge}|${colors.grass}|${colors.grassTip}`
     if (next !== key.current) {
       key.current = next
@@ -73,7 +73,7 @@ export function Ground({ grid, rig, scene }: { grid: ModuleGrid; rig: TreeRig; s
     const mat = litterMat.current
     if (mat) {
       mat.color.set('#ffffff')
-      const opacity = sceneryOpacity(pitch)
+      const opacity = sceneryOpacity(pitch) * plantInkOpacity(inkMix)
       mat.opacity = opacity
       mat.visible = opacity > 0.01
     }

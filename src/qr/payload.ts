@@ -1,4 +1,4 @@
-export const DEFAULT_PAYLOAD = 'http://example.com/'
+export const DEFAULT_PAYLOAD = 'https://www.cloudflare.com/'
 export const MAX_PAYLOAD_CHARS = 200
 export const TOO_LONG_MESSAGE = 'URL is too long for a reliable scan'
 

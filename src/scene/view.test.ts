@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cameraPose, glideAngle, isOverhead, OVERHEAD, sceneryOpacity, squareYaw } from './view'
+import { blockInkOpacity, cameraPose, glideAngle, inkMixTarget, isOverhead, OVERHEAD, plantInkOpacity, sceneryOpacity, squareYaw, stepInkMix } from './view'
 import { VIEW_PITCH, VIEW_YAW } from './tree'
 
 const dot = (a: number[], b: number[]) => a[0]! * b[0]! + a[1]! * b[1]! + a[2]! * b[2]!
@@ -61,6 +61,29 @@ describe('view helpers', () => {
     expect(sceneryOpacity(VIEW_PITCH)).toBe(1)
     expect(sceneryOpacity(1.0)).toBe(1)
     expect(sceneryOpacity(OVERHEAD)).toBe(0)
+  })
+
+  it('grows colour blocks with the camera, the way the plant grove becomes the code', () => {
+    expect(inkMixTarget(false, OVERHEAD)).toBe(0)
+    expect(inkMixTarget(true, VIEW_PITCH)).toBe(0)
+    expect(inkMixTarget(true, OVERHEAD)).toBe(1)
+    expect(inkMixTarget(true, 1.0)).toBeGreaterThan(0.15)
+    expect(inkMixTarget(true, 1.0)).toBeLessThan(0.85)
+    expect(plantInkOpacity(0)).toBe(1)
+    expect(blockInkOpacity(0)).toBe(0)
+    expect(plantInkOpacity(1)).toBe(0)
+    expect(blockInkOpacity(1)).toBe(1)
+    expect(plantInkOpacity(0.45)).toBeGreaterThan(0.2)
+    expect(plantInkOpacity(0.45)).toBeLessThan(0.85)
+    expect(blockInkOpacity(0.45)).toBeGreaterThan(0.2)
+    expect(blockInkOpacity(0.45)).toBeLessThan(0.85)
+    let mix = 0
+    const mid = inkMixTarget(true, 1.0)
+    for (let i = 0; i < 20; i++) mix = stepInkMix(mix, mid, 1 / 60)
+    expect(mix).toBeGreaterThan(mid * 0.7)
+    expect(mix).toBeLessThanOrEqual(mid)
+    mix = stepInkMix(0, 1, 1 / 60, true)
+    expect(mix).toBe(1)
   })
 
   it('glides to a target and pins it exactly', () => {

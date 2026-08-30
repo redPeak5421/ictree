@@ -1,4 +1,4 @@
-import { CanvasTexture, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace } from 'three'
+import { CanvasTexture, LinearFilter, LinearMipmapLinearFilter, RepeatWrapping, SRGBColorSpace } from 'three'
 import type { VegetationForm } from './grassLayout'
 import { carpetOutline } from './grassLayout'
 import { hashString, mulberry32 } from './hash'
@@ -102,6 +102,20 @@ function veinOnLeaf(g: Ctx, leaf: LeafShape, at: Pt, scale: number, rotation: nu
   }
 }
 
+function paintLeaf(g: Ctx, leaf: LeafShape, at: Pt, scale: number, rotation: number, fill = '#ffffff') {
+  const outline = silhouette(leaf)
+  trace(g, outline, at, scale, rotation)
+  g.fillStyle = fill
+  g.fill()
+  g.save()
+  trace(g, outline, at, scale, rotation)
+  g.clip()
+  if (leaf === 'maple' || leaf === 'cherry' || leaf === 'apple') {
+    veinOnLeaf(g, leaf, at, scale, rotation)
+  }
+  g.restore()
+}
+
 function drawBlossom(g: Ctx) {
   fillShape(g, 'blossom')
   for (let k = 0; k < 5; k++) {
@@ -163,64 +177,67 @@ function drawWillowWithe(g: Ctx) {
 }
 
 /**
- * A coverage cluster is one solid mass from above; from the side it should
- * still read as its species, so its interior carries that species' leaves,
- * needles, or blades as light strokes.
+ * Coverage cards used to be a filled superellipse with leaves painted on
+ * top — from any angle that read as a coin. The QR silhouette still owns
+ * the module; the texture is only the species' own leaves, needles, or
+ * blossoms, so the 3D crown is foliage, not plates.
  */
 function drawCluster(g: Ctx, shape: LeafShape) {
-  // Occupancy is a mid grey. Interior marks stay darker or a little paler,
-  // never a hole: after luma pinning they read as stacked leaves, not tiles.
-  g.fillStyle = '#d4d4d4'
-  trace(g, silhouette(shape))
-  g.fill()
-  g.save()
-  trace(g, silhouette(shape))
-  g.clip()
   const rng = mulberry32(hashString(`cluster:${shape}`))
+  const fills = ['#ffffff', '#f0f0f0', '#e4e4e4']
   if (shape === 'pineCanopy') {
-    for (let node = 0; node < 8; node++) {
-      const x = (rng() - 0.5) * 0.55
-      const y = (rng() - 0.5) * 0.55
-      const base = rng() * Math.PI * 2
-      for (let i = 0; i < 9; i++) {
-        const angle = base + (i - 4) * 0.2
-        const reach = 0.26 + rng() * 0.12
-        stroke(g, [x, y], [x + Math.cos(angle) * reach, y + Math.sin(angle) * reach], 5, i % 3 === 0 ? '#ececec' : '#ffffff')
+    for (let i = 0; i < 5; i++) {
+      const at: Pt = [(rng() - 0.5) * 0.2, (rng() - 0.5) * 0.16]
+      const rotation = -0.4 + rng() * 0.8 + (i - 2) * 0.16
+      const scale = 0.52 + rng() * 0.22
+      stroke(g, mapped(at, scale, rotation, [0, -0.48]), mapped(at, scale, rotation, [0.02, 0.46]), 2.8, '#c8c8c8')
+      for (let t = 0.05; t <= 0.95; t += 0.075) {
+        const y = -0.46 + t * 0.88
+        const len = 0.26 * (1 - t * 0.22)
+        const needle = scale * (0.42 + rng() * 0.08)
+        paintLeaf(g, 'pine', mapped(at, scale, rotation, [len * 0.18, y]), needle, rotation + 0.82, '#ffffff')
+        paintLeaf(g, 'pine', mapped(at, scale, rotation, [-len * 0.18, y]), needle, rotation - 0.82, '#ffffff')
       }
-      stroke(g, [x, y], [x - Math.cos(base) * 0.12, y - Math.sin(base) * 0.12], 3.6, '#b8b8b8')
     }
-  } else if (shape === 'willowCanopy') {
-    for (let i = 0; i < 18; i++) {
-      const x = (rng() - 0.5) * 0.84
-      const top = 0.42 - rng() * 0.3
-      const lean = (rng() - 0.5) * 0.2
-      g.save()
-      g.translate(px(x), py(top - 0.12))
-      g.rotate(lean)
-      g.fillStyle = i % 3 === 0 ? '#d8d8d8' : '#ffffff'
-      g.beginPath()
-      g.ellipse(0, 0, 0.048 * LEAF_PX, 0.2 * LEAF_PX, 0, 0, Math.PI * 2)
-      g.fill()
-      g.restore()
-    }
-  } else {
-    const leaf: LeafShape = shape === 'mapleCanopy' ? 'maple' : shape === 'appleCanopy' ? 'apple' : 'cherry'
-    const outline = silhouette(leaf)
-    const fills = ['#ffffff', '#ececec', '#dedede']
-    for (let i = 0; i < 7; i++) {
-      const at: Pt = [(rng() - 0.5) * 0.42, (rng() - 0.5) * 0.42]
-      const scale = 0.7 + rng() * 0.22
-      const rotation = rng() * Math.PI * 2
-      trace(g, outline, at, scale, rotation)
-      g.fillStyle = fills[i % fills.length]!
-      g.fill()
-      g.strokeStyle = '#c8c8c8'
-      g.lineWidth = 2.2
-      g.stroke()
-      veinOnLeaf(g, leaf, at, scale, rotation)
-    }
+    return
   }
-  g.restore()
+  if (shape === 'willowCanopy') {
+    for (let i = 0; i < 8; i++) {
+      paintLeaf(
+        g,
+        'willow',
+        [(rng() - 0.5) * 0.34, (rng() - 0.5) * 0.18],
+        0.58 + rng() * 0.28,
+        (rng() - 0.5) * 0.4,
+        fills[i % fills.length]!,
+      )
+    }
+    return
+  }
+  const leaf: LeafShape = shape === 'mapleCanopy' ? 'maple' : shape === 'appleCanopy' ? 'apple' : 'cherry'
+  if (leaf === 'cherry') {
+    for (let i = 0; i < 9; i++) {
+      paintLeaf(
+        g,
+        'cherry',
+        [(rng() - 0.5) * 0.38, (rng() - 0.5) * 0.38],
+        0.28 + rng() * 0.18,
+        rng() * Math.PI * 2,
+        fills[i % fills.length]!,
+      )
+    }
+    return
+  }
+  for (let i = 0; i < 3; i++) {
+    paintLeaf(
+      g,
+      leaf,
+      [(rng() - 0.5) * 0.16, (rng() - 0.5) * 0.16],
+      0.66 + rng() * 0.24,
+      rng() * Math.PI * 2,
+      fills[i % fills.length]!,
+    )
+  }
 }
 
 /** One apple, unit-free: body, dimple, stem. */
@@ -262,8 +279,7 @@ function drawAppleHeap(g: Ctx) {
 /**
  * Draw a leaf from the same normalized outline used by layout and projection
  * tests, so alpha pixels and module-boundary maths cannot drift apart.
- * Coverage clusters are opaque inside their outline; the crown's visible
- * elements (twigs, withes, blossoms) may be open inside their box.
+ * Coverage cards draw the species' leaves or needles, not a filled plate.
  */
 export function leafTexture(shape: LeafShape = 'ovate'): CanvasTexture {
   const found = leaves[shape]
@@ -297,27 +313,9 @@ export function leafTexture(shape: LeafShape = 'ovate'): CanvasTexture {
   return finishMap(texture)
 }
 
-let petal: CanvasTexture | null = null
-
-/** Soft ellipse for spring petals — the maple silhouette reads wrong at that size. */
+/** Five-petal blossom, the same outline the cherry crown already uses. */
 export function petalTexture(): CanvasTexture {
-  if (petal) return petal
-  const size = 64
-  const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
-  const g = canvas.getContext('2d')
-  if (!g) {
-    petal = new CanvasTexture(canvas)
-    return petal
-  }
-  g.fillStyle = '#ffffff'
-  g.beginPath()
-  g.ellipse(size / 2, size / 2, size * 0.26, size * 0.44, 0, 0, Math.PI * 2)
-  g.fill()
-  petal = new CanvasTexture(canvas)
-  petal.colorSpace = SRGBColorSpace
-  return petal
+  return leafTexture('blossom')
 }
 
 const fruits: Partial<Record<'round' | 'long', CanvasTexture>> = {}
@@ -538,5 +536,44 @@ export function carpetTexture(): CanvasTexture {
     g.stroke()
   }
   g.restore()
+  return finishMap(texture)
+}
+
+let bark: CanvasTexture | null = null
+
+/**
+ * Pale wood wash for the trunk and limbs. A few wide, faint bands only —
+ * dense cracks read as noise at grove scale. Contrast stays modest so
+ * overhead pale wood cannot darken a light QR module.
+ */
+export function barkTexture(): CanvasTexture {
+  if (bark) return bark
+  const width = 256
+  const height = 512
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const g = canvas.getContext('2d')
+  const texture = new CanvasTexture(canvas)
+  bark = texture
+  if (!g) return finishMap(texture)
+  g.fillStyle = '#f0ebe3'
+  g.fillRect(0, 0, width, height)
+  const rng = mulberry32(hashString('bark-wash'))
+  for (let i = 0; i < 6; i++) {
+    const x0 = (i + 0.35 + rng() * 0.3) * (width / 6)
+    g.strokeStyle = `rgba(132, 108, 82, ${0.035 + rng() * 0.04})`
+    g.lineWidth = 18 + rng() * 22
+    g.beginPath()
+    g.moveTo(x0, 0)
+    let x = x0
+    for (let y = 0; y <= height; y += 48) {
+      x += (rng() - 0.5) * 6
+      g.lineTo(x, y)
+    }
+    g.stroke()
+  }
+  texture.wrapS = RepeatWrapping
+  texture.wrapT = RepeatWrapping
   return finishMap(texture)
 }

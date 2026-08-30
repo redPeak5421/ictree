@@ -85,12 +85,11 @@ describe('tree species selection', () => {
     for (const kind of TREE_KINDS) {
       const rig = buildTree(grid, hashString(grid.payload), { species: kind.id })
       const canopy = canopyShapeFor(kind.id)
-      const own = new Set([canopy, fillerShapeFor(kind.id)])
+      const element = fillerShapeFor(kind.id)
       expect(rig.leaves.length).toBeGreaterThan(0)
-      const coverage = new Set([canopy])
-      expect(rig.leaves.every((leaf) => coverage.has(leaf.shape))).toBe(true)
-      expect(rig.filler.every((leaf) => own.has(leaf.shape))).toBe(true)
-      expect(rig.filler.some((leaf) => leaf.shape === fillerShapeFor(kind.id))).toBe(true)
+      expect(rig.leaves.every((leaf) => leaf.shape === canopy)).toBe(true)
+      expect(rig.filler.every((leaf) => leaf.shape === element)).toBe(true)
+      expect(rig.filler.some((leaf) => leaf.shape.endsWith('Canopy'))).toBe(false)
     }
     expect(canopyShapeFor('pine')).toBe('pineCanopy')
     expect(canopyShapeFor('maple')).toBe('mapleCanopy')

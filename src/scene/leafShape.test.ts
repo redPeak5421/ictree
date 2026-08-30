@@ -48,6 +48,18 @@ describe('leaf silhouettes', () => {
     expect(Math.min(...radii) / Math.max(...radii)).toBeLessThan(0.35)
   })
 
+
+  it('keeps species leaves far from a circular disc', () => {
+    for (const shape of ['maple', 'blossom'] as const) {
+      const radii = silhouette(shape).map(([x, y]) => Math.hypot(x, y))
+      expect(Math.min(...radii) / Math.max(...radii)).toBeLessThan(0.55)
+    }
+    const [cherryX, cherryY] = halfExtents('cherry')
+    const [pineX, pineY] = halfExtents('pine')
+    expect(cherryX / cherryY).toBeLessThan(0.9)
+    expect(pineX / pineY).toBeLessThan(0.25)
+  })
+
   it('maps every supported shape to its renderer texture kind', () => {
     expect(LEAF_SHAPES.map(textureKindForLeafShape)).toEqual([...LEAF_SHAPES])
   })
