@@ -14,6 +14,7 @@ describe('still payload framing', () => {
       tree: 'maple',
       locked: false,
       mode: 'create',
+      ink: 'plants',
     })
   })
 })

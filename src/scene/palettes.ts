@@ -115,7 +115,7 @@ export function colorsOf(season: Season, tree: TreeSpecies): SceneColors {
     trunk: tree === 'pine' ? '#c4ad94' : '#cdb9a3',
     accent: tone.accent,
     fruit: tree === 'apple' ? '#d8342a' : tone.accent,
-    inkLift: ground.inkLift,
+    inkLift: tree === 'pine' ? Math.max(ground.inkLift, 0.025) : ground.inkLift,
   }
 }
 
