@@ -6,13 +6,15 @@ import {
   buildFinderCarpet,
   buildFinderVegetation,
   buildGroundLitter,
+  buildMeadowCarpet,
+  buildMeadowVegetation,
   buildSceneryVegetation,
   FINDER_CARPET_SLOTS,
   textureKindForVegetation,
   widthRangeForVegetation,
   type VegetationInstance,
 } from './grassLayout'
-import { isCornerCell } from './treeSpecies'
+import { isCornerCell, isEdgeCell } from './treeSpecies'
 
 const grid = encodeGrid('https://example.com/tree-2')
 const seed = hashString(grid.payload)
@@ -144,7 +146,7 @@ describe('grass layout', () => {
   })
 
   it('maps every vegetation form to a renderer texture and width rule', () => {
-    const all = [...scenery, ...buildFinderVegetation(grid, seed)]
+    const all = [...scenery, ...buildFinderVegetation(grid, seed), ...buildMeadowVegetation(grid, seed)]
     for (const item of all) {
       expect(['blade', 'broad', 'seed']).toContain(textureKindForVegetation(item.form))
       const [minimum, maximum] = widthRangeForVegetation(item.form)
@@ -164,6 +166,18 @@ describe('grass layout', () => {
     expect(ratio(puff, (item) => item.form === 'seed')).toBeGreaterThan(ratio(rim, (item) => item.form === 'seed'))
     expect(ratio(flower, (item) => item.form === 'blade')).toBeGreaterThan(0)
     expect(ratio(puff, (item) => item.form === 'blade')).toBeGreaterThan(0)
+  })
+
+  it('packs the QR rim with a meadow carpet and shorter standing plants', () => {
+    const carpet = buildMeadowCarpet(grid, seed)
+    const plants = buildMeadowVegetation(grid, seed)
+    const expectedCells = grid.cells.filter((cell) => cell.dark && isEdgeCell(cell.x, cell.y, grid.size)).length
+    expect(expectedCells).toBeGreaterThan(0)
+    expect(carpet).toHaveLength(expectedCells * FINDER_CARPET_SLOTS)
+    expect(buildMeadowCarpet(grid, seed)).toEqual(carpet)
+    expect(plants.length).toBeGreaterThan(expectedCells * 20)
+    expect(Math.max(...plants.map((item) => item.height))).toBeLessThanOrEqual(1.1)
+    expect(plants.every((item) => item.gust === 0)).toBe(true)
   })
 
   it('stands finder blades taller and more vertical than the lawn band', () => {

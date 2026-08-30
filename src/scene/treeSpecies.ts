@@ -50,9 +50,33 @@ export interface TreeSpeciesProfile {
 
 export const CORNER_MODULES = 8
 
+function nearCornerBand(value: number, size: number): boolean {
+  return value < CORNER_MODULES || value >= size - CORNER_MODULES
+}
+
 export function isCornerCell(x: number, y: number, size: number): boolean {
-  const near = (value: number) => value < CORNER_MODULES || value >= size - CORNER_MODULES
-  return near(x) && near(y)
+  return nearCornerBand(x, size) && nearCornerBand(y, size)
+}
+
+/**
+ * How many outer QR rings become meadow instead of crown. Capped at two
+ * modules so the grassy frame stays a thin lip and the canopy still owns
+ * the inner dark modules.
+ */
+export function edgeRingsFor(_size: number): number {
+  return 2
+}
+
+/** Dark modules on the QR rim, between the finder corners. */
+export function isEdgeCell(x: number, y: number, size: number): boolean {
+  const rings = edgeRingsFor(size)
+  const onRim = x < rings || y < rings || x >= size - rings || y >= size - rings
+  return onRim && !isCornerCell(x, y, size)
+}
+
+/** Finder corners plus the rim: grass ink, not canopy. */
+export function isGrassCell(x: number, y: number, size: number): boolean {
+  return isCornerCell(x, y, size) || isEdgeCell(x, y, size)
 }
 
 export type TreeHabit = 'lush' | 'sparse'
@@ -174,9 +198,10 @@ export function profileFor(species: TreeSpecies): TreeSpeciesProfile {
 }
 
 /**
- * Assign every dark, non-corner QR module one continuous crown height and one
- * semantic layer. Layer labels are quantiles of the continuous field; they do
- * not snap leaves onto three visible shelves.
+ * Assign every dark inner QR module one continuous crown height and one
+ * semantic layer. Finder corners and the outer rim are meadow, not canopy.
+ * Layer labels are quantiles of the continuous field; they do not snap
+ * leaves onto three visible shelves.
  */
 export function crownLayout(grid: ModuleGrid, seed: number, species: TreeSpecies): CrownPoint[] {
   const profile = profileFor(species)
@@ -185,7 +210,7 @@ export function crownLayout(grid: ModuleGrid, seed: number, species: TreeSpecies
   const rng = mulberry32((seed ^ hashString(`${grid.payload}:${species}:crown`)) >>> 0)
   const phases = Array.from({ length: 4 }, () => rng() * Math.PI * 2)
   const samples = grid.cells
-    .filter((cell) => cell.dark && !isCornerCell(cell.x, cell.y, grid.size))
+    .filter((cell) => cell.dark && !isGrassCell(cell.x, cell.y, grid.size))
     .map((cell) => {
       const x = cell.x - half
       const z = cell.y - half

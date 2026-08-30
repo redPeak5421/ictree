@@ -4,6 +4,8 @@ import { colonize, type ColonizeNode, type Point } from './colonize'
 import {
   buildFinderCarpet,
   buildFinderVegetation,
+  buildMeadowCarpet,
+  buildMeadowVegetation,
   type FinderCarpetInstance,
   type FinderVegetationInstance,
 } from './grassLayout'
@@ -15,6 +17,7 @@ import {
   crownLayout,
   fillerShapeFor,
   isCornerCell,
+  isGrassCell,
   profileFor,
   type CrownLayer,
   type TreeHabit,
@@ -155,13 +158,17 @@ export function isCornerModule(x: number, y: number, size: number): boolean {
   return isCornerCell(x, y, size)
 }
 
+export function isGrassModule(x: number, y: number, size: number): boolean {
+  return isGrassCell(x, y, size)
+}
+
 /**
  * The tree is the code. Seen from straight above, the canopy's outline is the
  * QR matrix — not because anything rearranges, but because of where the
- * leaves grow: every dark module outside the corners owns one leaf pack at one
- * crown height, each sized so its silhouette cannot cross into a light module,
- * and no light module has a leaf over it. The corners are grass
- * tufts, not reserved colour plates. The trunk and twigs are pale, so where
+ * leaves grow: every dark module inside the grassy frame owns one leaf pack
+ * at one crown height, each sized so its silhouette cannot cross into a
+ * light module, and no light module has a leaf over it. The corners and the
+ * QR rim are grass tufts, not reserved colour plates. The trunk and twigs are pale, so where
  * they show through a light module from above they still read as light.
  *
  * Crown: a species-specific broadleaf profile on a short trunk. Each dark
@@ -319,7 +326,7 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     owners.push({ point, at: attractors.length - 1 })
   }
   const lawnCells = grid.cells.filter(
-    (cell) => cell.dark && isCornerModule(cell.x, cell.y, grid.size),
+    (cell) => cell.dark && isGrassCell(cell.x, cell.y, grid.size),
   )
 
   const colony = colonize(
@@ -575,7 +582,7 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     (t, leaf) => Math.max(t, leaf.position[1] + leaf.scale * 0.5),
     trunkH,
   )
-  const finderGrass = buildFinderVegetation(grid, seed)
-  const finderCarpet = buildFinderCarpet(grid, seed)
+  const finderGrass = [...buildFinderVegetation(grid, seed), ...buildMeadowVegetation(grid, seed)]
+  const finderCarpet = [...buildFinderCarpet(grid, seed), ...buildMeadowCarpet(grid, seed)]
   return { species, habit, branches, leaves, finderGrass, finderCarpet, lawns, filler, crownTop }
 }

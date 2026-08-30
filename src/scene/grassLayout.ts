@@ -2,7 +2,7 @@ import { ISLAND_RIM, type ModuleGrid } from '../qr/types'
 import { hashString, mulberry32 } from './hash'
 import { fitScale, qrSlots, type Bounds, type Point2 } from './leafShape'
 import type { GroundCover } from './palettes'
-import { isCornerCell, type TreeSpecies } from './treeSpecies'
+import { isCornerCell, isEdgeCell, type TreeSpecies } from './treeSpecies'
 
 export type VegetationRegion = 'rim' | 'turf' | 'trunk' | 'finder'
 export type VegetationForm = 'blade' | 'broad' | 'seed'
@@ -334,11 +334,16 @@ export function buildGroundLitter(grid: ModuleGrid, seed: number, species?: Tree
  * and fitting are the same coverage-first layout the canopy uses, so a
  * finder is a packed lawn rather than a reserved colour plate.
  */
-export function buildFinderCarpet(grid: ModuleGrid, seed: number): FinderCarpetInstance[] {
-  const rng = mulberry32((seed ^ hashString('finder-carpet')) >>> 0)
+function buildInkCarpet(
+  grid: ModuleGrid,
+  seed: number,
+  salt: string,
+  belongs: (x: number, y: number, size: number) => boolean,
+): FinderCarpetInstance[] {
+  const rng = mulberry32((seed ^ hashString(salt)) >>> 0)
   const half = (grid.size - 1) / 2
   const result: FinderCarpetInstance[] = []
-  const cells = grid.cells.filter((cell) => cell.dark && isCornerCell(cell.x, cell.y, grid.size))
+  const cells = grid.cells.filter((cell) => cell.dark && belongs(cell.x, cell.y, grid.size))
 
   for (const cell of cells) {
     const cx = cell.x - half
@@ -369,16 +374,31 @@ export function buildFinderCarpet(grid: ModuleGrid, seed: number): FinderCarpetI
   return result
 }
 
+export function buildFinderCarpet(grid: ModuleGrid, seed: number): FinderCarpetInstance[] {
+  return buildInkCarpet(grid, seed, 'finder-carpet', isCornerCell)
+}
+
+/** Same packed occupancy as the finder, on the QR rim's dark modules. */
+export function buildMeadowCarpet(grid: ModuleGrid, seed: number): FinderCarpetInstance[] {
+  return buildInkCarpet(grid, seed, 'meadow-carpet', isEdgeCell)
+}
+
 /**
- * Standing tufts rooted in the dark corner modules. A short lawn band plus
- * taller, more vertical blades so the side view is a hedge, while the
- * overhead footprint stays inside neighbour-aware ink bounds.
+ * Standing tufts rooted in dark grass-ink modules. Finder corners are a
+ * hedge; the rim is a shorter meadow so the island edge fills without
+ * becoming a second tree.
  */
-export function buildFinderVegetation(grid: ModuleGrid, seed: number): FinderVegetationInstance[] {
-  const rng = mulberry32((seed ^ hashString('finder-vegetation')) >>> 0)
+function buildInkVegetation(
+  grid: ModuleGrid,
+  seed: number,
+  salt: string,
+  belongs: (x: number, y: number, size: number) => boolean,
+  kind: 'finder' | 'meadow',
+): FinderVegetationInstance[] {
+  const rng = mulberry32((seed ^ hashString(salt)) >>> 0)
   const half = (grid.size - 1) / 2
   const result: FinderVegetationInstance[] = []
-  const cells = grid.cells.filter((cell) => cell.dark && isCornerCell(cell.x, cell.y, grid.size))
+  const cells = grid.cells.filter((cell) => cell.dark && belongs(cell.x, cell.y, grid.size))
 
   for (const cell of cells) {
     const cx = cell.x - half
@@ -390,13 +410,14 @@ export function buildFinderVegetation(grid: ModuleGrid, seed: number): FinderVeg
       back: cz + local.back,
       front: cz + local.front,
     }
-    const count = 70 + Math.floor(rng() * 16)
+    const meadow = kind === 'meadow'
+    const count = (meadow ? 52 : 70) + Math.floor(rng() * (meadow ? 12 : 16))
     let placed = 0
     let attempts = 0
     while (placed < count && attempts < count * 10) {
       attempts++
-      const lawn = placed < 28
-      const form = placed % 5 === 0 ? 'broad' : 'blade'
+      const lawn = placed < (meadow ? 34 : 28)
+      const form = placed % (meadow ? 4 : 5) === 0 ? 'broad' : 'blade'
       const radius = Math.sqrt(rng()) * FINDER_ROOT_RADIUS
       const angle = rng() * Math.PI * 2
       const width = form === 'broad'
@@ -405,10 +426,12 @@ export function buildFinderVegetation(grid: ModuleGrid, seed: number): FinderVeg
           ? 0.14 + rng() * 0.1
           : 0.12 + rng() * 0.12
       const height = form === 'broad'
-        ? 0.42 + rng() * 0.55
+        ? (meadow ? 0.28 + rng() * 0.4 : 0.42 + rng() * 0.55)
         : lawn
           ? 0.16 + rng() * 0.26
-          : 0.72 + rng() * (FINDER_BLADE_HEIGHT - 0.72)
+          : meadow
+            ? 0.36 + rng() * 0.52
+            : 0.72 + rng() * (FINDER_BLADE_HEIGHT - 0.72)
       const lean = form === 'broad'
         ? 0.12 + rng() * 0.26
         : lawn
@@ -468,4 +491,12 @@ export function buildFinderVegetation(grid: ModuleGrid, seed: number): FinderVeg
   }
 
   return result
+}
+
+export function buildFinderVegetation(grid: ModuleGrid, seed: number): FinderVegetationInstance[] {
+  return buildInkVegetation(grid, seed, 'finder-vegetation', isCornerCell, 'finder')
+}
+
+export function buildMeadowVegetation(grid: ModuleGrid, seed: number): FinderVegetationInstance[] {
+  return buildInkVegetation(grid, seed, 'meadow-vegetation', isEdgeCell, 'meadow')
 }

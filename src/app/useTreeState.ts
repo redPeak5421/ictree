@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { setAmbienceMuted, setAmbienceSeason } from '../audio/ambience'
+import { setAmbienceMuted, setAmbienceRain, setAmbienceSeason } from '../audio/ambience'
 import { encodeGrid } from '../qr/encode'
 import { DEFAULT_PAYLOAD, normalizePayload, payloadError } from '../qr/payload'
 import type { ModuleGrid } from '../qr/types'
@@ -135,6 +135,10 @@ export function useTreeState() {
   useEffect(() => {
     setAmbienceSeason(season)
   }, [season])
+
+  useEffect(() => {
+    setAmbienceRain(rain)
+  }, [rain])
 
   const toggleView = useCallback(() => {
     const state = scene.current

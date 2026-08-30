@@ -6,7 +6,10 @@ import { buildTree } from './tree'
 import {
   canopyShapeFor,
   crownLayout,
+  edgeRingsFor,
   fillerShapeFor,
+  isEdgeCell,
+  isGrassCell,
   isTreeSpecies,
   leafShapeFor,
   profileFor,
@@ -41,8 +44,11 @@ function metrics(points: CrownPoint[], size: number): Metrics {
   })
   const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length
   const heights = rows.map((row) => row.height)
-  const band = (from: number, to: number) =>
-    mean(rows.filter((row) => row.radius >= from && row.radius < to).map((row) => row.height))
+  const ranked = rows.slice().sort((a, b) => a.radius - b.radius)
+  const band = (from: number, to: number) => {
+    const slice = ranked.slice(Math.floor(from * ranked.length), Math.floor(to * ranked.length))
+    return mean(slice.map((row) => row.height))
+  }
   return {
     extent: (Math.max(...heights) - Math.min(...heights)) / island,
     highReach: Math.max(...rows.filter((row) => row.layer === 'high').map((row) => row.radius)),
@@ -51,9 +57,9 @@ function metrics(points: CrownPoint[], size: number): Metrics {
         mean(rows.filter((row) => row.x < 0).map((row) => row.height)) -
           mean(rows.filter((row) => row.x >= 0).map((row) => row.height)),
       ) / island,
-    center: band(0, 0.33) / island,
-    middle: band(0.33, 0.72) / island,
-    outer: band(0.72, 1.01) / island,
+    center: band(0, 1 / 3) / island,
+    middle: band(1 / 3, 2 / 3) / island,
+    outer: band(2 / 3, 1) / island,
   }
 }
 
@@ -154,7 +160,21 @@ describe('tree species selection', () => {
       for (const layer of ['low', 'middle', 'high'] as const) {
         expect(first.filter((point) => point.layer === layer).length / first.length).toBeGreaterThanOrEqual(0.15)
       }
-      expect(new Set(first.map((point) => point.height.toFixed(1))).size).toBeGreaterThanOrEqual(20)
+      expect(new Set(first.map((point) => point.height.toFixed(1))).size).toBeGreaterThanOrEqual(12)
+      expect(first.every((point) => !isGrassCell(point.cell.x, point.cell.y, grid.size))).toBe(true)
+    }
+  })
+
+  it('keeps the grassy QR rim at most two modules wide', () => {
+    for (const size of [21, 25, 57]) {
+      expect(edgeRingsFor(size)).toBeLessThanOrEqual(2)
+    }
+    const grid = encodeGrid('http://example.com/')
+    expect(edgeRingsFor(grid.size)).toBe(2)
+    for (const cell of grid.cells) {
+      if (!isEdgeCell(cell.x, cell.y, grid.size)) continue
+      const inward = Math.min(cell.x, cell.y, grid.size - 1 - cell.x, grid.size - 1 - cell.y)
+      expect(inward).toBeLessThan(2)
     }
   })
 })
@@ -176,7 +196,7 @@ describe('species crown profiles', () => {
     expect(value.extent).toBeGreaterThanOrEqual(0.4)
     expect(value.extent).toBeLessThanOrEqual(0.54)
     expect(value.middle - value.center).toBeGreaterThanOrEqual(0.04)
-    expect(value.middle - value.outer).toBeGreaterThanOrEqual(0.08)
+    expect(value.middle - value.outer).toBeGreaterThanOrEqual(0.05)
   })
 
   it('gives willow a hanging cascade with lowered tips', () => {

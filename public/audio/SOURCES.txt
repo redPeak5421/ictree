@@ -1,0 +1,7 @@
+CC0 field recordings from BigSoundBank (Joseph Sardin / Clarisse).
+Attribution is not required.
+
+spring.mp3  Forest #100          https://bigsoundbank.com/forest-s0100.html
+summer.mp3  Cicadas #3002        https://bigsoundbank.com/cicadas-s3002.html
+autumn.mp3  Wind in a Tree #659  https://bigsoundbank.com/sound-0659-vent-dans-un-arbre.html
+rain.mp3    Rain on Puddle #1290 https://bigsoundbank.com/rain-on-puddle-s1290.html

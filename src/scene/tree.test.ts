@@ -8,7 +8,7 @@ import {
   BLADE_ROOT,
   BRANCH_OVERLAP,
   buildTree,
-  isCornerModule,
+  isGrassModule,
   REACH,
   SEAM_OVERLAP,
   SLAB_H,
@@ -85,16 +85,16 @@ describe('buildTree', () => {
     }
   })
 
-  it('covers every dark module: leaves outside the corners, turf inside them', () => {
+  it('covers every dark module: leaves inside the frame, turf on corners and rim', () => {
     const leafCells = new Set(
       tree.leaves.map((l) => `${l.cell[0]},${l.cell[1]}`),
     )
     const lawnCells = new Set(tree.lawns.map((l) => `${l.cell[0]},${l.cell[1]}`))
     for (const cell of grid.cells) {
       const key = `${cell.x - half},${cell.y - half}`
-      const corner = isCornerModule(cell.x, cell.y, grid.size)
-      expect(leafCells.has(key)).toBe(cell.dark && !corner)
-      expect(lawnCells.has(key)).toBe(cell.dark && corner)
+      const grass = isGrassModule(cell.x, cell.y, grid.size)
+      expect(leafCells.has(key)).toBe(cell.dark && !grass)
+      expect(lawnCells.has(key)).toBe(cell.dark && grass)
     }
   })
 
@@ -107,7 +107,7 @@ describe('buildTree', () => {
       byCell.set(key, entry)
     }
     const canopyModules = grid.cells.filter(
-      (cell) => cell.dark && !isCornerModule(cell.x, cell.y, grid.size),
+      (cell) => cell.dark && !isGrassModule(cell.x, cell.y, grid.size),
     ).length
     expect(tree.leaves).toHaveLength(canopyModules * 13)
     const layers = new Set<string>()
@@ -136,12 +136,12 @@ describe('buildTree', () => {
 
   it('caps branch clutter after removing duplicate vertical attractors', () => {
     const canopyModules = grid.cells.filter(
-      (cell) => cell.dark && !isCornerModule(cell.x, cell.y, grid.size),
+      (cell) => cell.dark && !isGrassModule(cell.x, cell.y, grid.size),
     ).length
     expect(tree.branches.length).toBeLessThanOrEqual(canopyModules * 6 + 80)
   })
 
-  it('fills every corner with a grass carpet and a lush standing tuft', () => {
+  it('fills every grassy module with a grass carpet and a lush standing tuft', () => {
     expect(tree.finderCarpet).toHaveLength(tree.lawns.length * 13)
     expect(tree.finderGrass.length).toBeGreaterThan(tree.lawns.length * 20)
     const again = buildTree(grid, hashString(grid.payload), choice)
@@ -162,7 +162,7 @@ describe('buildTree', () => {
 
   it('rounds the crown with deterministic ink-free filler', () => {
     const canopyModules = grid.cells.filter(
-      (cell) => cell.dark && !isCornerModule(cell.x, cell.y, grid.size),
+      (cell) => cell.dark && !isGrassModule(cell.x, cell.y, grid.size),
     ).length
     // Thick vertical stacks on each dark module, still bounded.
     expect(tree.filler.length).toBeGreaterThan(canopyModules * 12)
@@ -187,7 +187,7 @@ describe('buildTree', () => {
 
   it('keeps the previous sparse habit thinner and still on dark modules', () => {
     const canopyModules = grid.cells.filter(
-      (cell) => cell.dark && !isCornerModule(cell.x, cell.y, grid.size),
+      (cell) => cell.dark && !isGrassModule(cell.x, cell.y, grid.size),
     ).length
     const sparse = buildTree(grid, hashString(grid.payload), { ...choice, habit: 'sparse' })
     expect(sparse.habit).toBe('sparse')
@@ -222,7 +222,7 @@ describe('buildTree', () => {
     const result = buildTree(fixture, hashString(payload))
     const elapsed = performance.now() - start
     const canopyModules = fixture.cells.filter(
-      (cell) => cell.dark && !isCornerModule(cell.x, cell.y, fixture.size),
+      (cell) => cell.dark && !isGrassModule(cell.x, cell.y, fixture.size),
     ).length
 
     expect(fixture.version).toBe(version)
