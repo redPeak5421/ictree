@@ -188,14 +188,15 @@ describe('species crown profiles', () => {
     expect(value.center - value.outer).toBeGreaterThanOrEqual(0.12)
   })
 
-  it('gives cherry a raised umbrella shoulder, center hollow, and lowered tips', () => {
+  it('gives cherry a spreading crown with a raised center and lowered tips', () => {
     const payload = FIXTURES[2][0]
     const grid = encodeGrid(payload)
     const value = metrics(crownLayout(grid, hashString(payload), 'cherry'), grid.size)
     expect(value.extent).toBeGreaterThanOrEqual(0.4)
     expect(value.extent).toBeLessThanOrEqual(0.54)
-    expect(value.middle - value.center).toBeGreaterThanOrEqual(0.04)
-    expect(value.middle - value.outer).toBeGreaterThanOrEqual(0.05)
+    expect(value.center - value.outer).toBeGreaterThanOrEqual(0.08)
+    expect(value.center).toBeGreaterThanOrEqual(value.middle)
+    expect(value.middle - value.outer).toBeGreaterThanOrEqual(0.04)
   })
 
   it('gives willow a hanging cascade with lowered tips', () => {

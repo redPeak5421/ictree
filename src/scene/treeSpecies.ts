@@ -122,14 +122,13 @@ function mapleHeight({ x, z, radius, angle, phases }: CrownSampleInput): number 
 }
 
 function cherryHeight({ x, z, radius, angle, phases }: CrownSampleInput): number {
-  const umbrella = 0.92 * Math.exp(-Math.pow((radius - 0.5) / 0.3, 2))
-  const hollow = 0.2 * Math.exp(-Math.pow(radius / 0.22, 2))
-  const tips = 0.36 * radius ** 2
+  const dome = 0.96 * (1 - radius ** 2.35)
+  const tips = 0.16 * radius ** 2
   const lobes =
     0.1 * Math.sin(3 * angle + phases[0]!) +
     0.05 * Math.sin(6 * angle + phases[1]!)
   const crownNoise = 0.035 * Math.sin(x * 0.5 + phases[2]!) * Math.cos(z * 0.58 + phases[3]!)
-  return umbrella - hollow - tips + lobes * (0.45 + radius * 0.55) + crownNoise
+  return dome - tips + lobes * (0.45 + radius * 0.55) + crownNoise
 }
 
 function willowHeight({ x, z, radius, angle, phases }: CrownSampleInput): number {
