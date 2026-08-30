@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { setAmbienceMuted, setAmbienceRain, setAmbienceSeason } from '../audio/ambience'
 import { encodeGrid } from '../qr/encode'
-import { DEFAULT_PAYLOAD, normalizePayload, payloadError } from '../qr/payload'
+import { defaultPayload, normalizePayload, payloadError } from '../qr/payload'
 import type { ModuleGrid } from '../qr/types'
 import {
   colorsOf,
@@ -30,7 +30,7 @@ function prefersReducedMotion(): boolean {
 }
 
 function bootPayload(initial: ShareState): string {
-  return initial.url || DEFAULT_PAYLOAD
+  return initial.url || defaultPayload()
 }
 
 export function useTreeState() {
@@ -39,7 +39,7 @@ export function useTreeState() {
   const startLocked = initial.locked || isWrapped(startPayload)
   const startMode: AppMode = initial.mode === 'reveal' || startLocked ? 'reveal' : 'create'
   const [mode, setMode] = useState<AppMode>(startMode)
-  const [url, setUrl] = useState(startLocked ? DEFAULT_PAYLOAD : startPayload)
+  const [url, setUrl] = useState(startLocked ? defaultPayload() : startPayload)
   const [password, setPassword] = useState('')
   const [payload, setPayload] = useState(startPayload)
   const [locked, setLocked] = useState(startLocked)
@@ -49,7 +49,7 @@ export function useTreeState() {
   const [muted, setMuted] = useState(true)
   const [rain, setRain] = useState(false)
   const [overhead, setOverhead] = useState(false)
-  const [error, setError] = useState<string | null>(payloadError(startLocked ? DEFAULT_PAYLOAD : startPayload))
+  const [error, setError] = useState<string | null>(payloadError(startLocked ? defaultPayload() : startPayload))
   const [grid, setGrid] = useState<ModuleGrid>(() => encodeGrid(startPayload))
   const [webgl] = useState(detectWebgl)
   const [reduced, setReduced] = useState(prefersReducedMotion)
@@ -106,7 +106,7 @@ export function useTreeState() {
   useEffect(() => {
     if (mode !== 'reveal') return
     setError(null)
-    setGrid(encodeGrid(payload || DEFAULT_PAYLOAD))
+    setGrid(encodeGrid(payload || defaultPayload()))
   }, [mode, payload])
 
   useEffect(() => {
@@ -164,13 +164,13 @@ export function useTreeState() {
   }, [])
 
   const applyShareState = useCallback((next: ShareState) => {
-    const nextPayload = next.url || DEFAULT_PAYLOAD
+    const nextPayload = next.url || defaultPayload()
     const nextLocked = next.locked || isWrapped(next.url)
     setMode('reveal')
     setPayload(nextPayload)
     setLocked(nextLocked)
     setPassword('')
-    setUrl(nextLocked ? DEFAULT_PAYLOAD : nextPayload)
+    setUrl(nextLocked ? defaultPayload() : nextPayload)
     setSeason(next.season)
     setTree(next.tree)
     setInk(next.ink)
@@ -189,7 +189,7 @@ export function useTreeState() {
   const changeMode = useCallback((next: AppMode) => {
     setMode(next)
     if (next === 'create' && isWrapped(payload)) {
-      setUrl(DEFAULT_PAYLOAD)
+      setUrl(defaultPayload())
       setPassword('')
       setLocked(false)
     }

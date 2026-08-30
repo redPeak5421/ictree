@@ -5,7 +5,6 @@ import { HintPill } from '../ui/HintPill'
 import { InkStyleBar } from '../ui/InkStyleBar'
 import { LanguageSelect } from '../ui/LanguageSelect'
 import { ModeBar } from '../ui/ModeBar'
-import { MuteButton } from '../ui/MuteButton'
 import { PasswordField } from '../ui/PasswordField'
 import { QrFallback } from '../ui/QrFallback'
 import { RevealPanel } from '../ui/RevealPanel'
@@ -39,7 +38,6 @@ export function App() {
   return (
     <div className="app">
       <div className="stage">
-        <span className="wordmark">grove</span>
         {state.webgl ? (
           <TreeCanvas
             grid={state.grid}
@@ -62,7 +60,6 @@ export function App() {
           <div className="top-tools">
             <LanguageSelect />
             <WeatherButton rain={state.rain} onToggle={state.toggleRain} />
-            <MuteButton muted={state.muted} onToggle={state.toggleMuted} />
           </div>
         </div>
         {state.error && <p className="error">{translateMessage(t, state.error)}</p>}
@@ -78,7 +75,6 @@ export function App() {
           <>
             <RevealPanel grid={state.grid} colors={state.colors} locked={state.locked} />
             <div className="field-row is-note">
-              <p className="reveal-note">{t.importStillNote}</p>
               {shareMenu}
             </div>
           </>

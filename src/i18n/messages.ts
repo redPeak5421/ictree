@@ -52,7 +52,6 @@ export interface Messages {
   holdOverhead: string
   enterPassword: string
   wrongPassword: string
-  importStillNote: string
   webglUnavailable: string
   /** Error strings thrown by the share and payload modules, keyed by their English text. */
   errors: Record<string, string>
@@ -98,7 +97,6 @@ const en: Messages = {
   holdOverhead: 'Hold the tree from above, then scan.',
   enterPassword: 'Enter the password, then scan.',
   wrongPassword: 'Wrong password.',
-  importStillNote: 'Import a still, then scan the grove to read it.',
   webglUnavailable: 'WebGL is unavailable. You can still download a scannable QR.',
   errors: {
     'URL is too long for a reliable scan': 'URL is too long for a reliable scan',
@@ -149,7 +147,6 @@ const zhCN: Messages = {
   holdOverhead: '先俯视这棵树，再识别。',
   enterPassword: '输入密码后再识别。',
   wrongPassword: '密码错误。',
-  importStillNote: '导入静态图，再识别树林即可读取。',
   webglUnavailable: '当前无法使用 WebGL，你仍可下载可扫描的二维码。',
   errors: {
     'URL is too long for a reliable scan': '网址太长，无法可靠扫描',
@@ -200,7 +197,6 @@ const zhTW: Messages = {
   holdOverhead: '先俯視這棵樹，再辨識。',
   enterPassword: '輸入密碼後再辨識。',
   wrongPassword: '密碼錯誤。',
-  importStillNote: '匯入靜態圖，再辨識樹林即可讀取。',
   webglUnavailable: '目前無法使用 WebGL，你仍可下載可掃描的 QR Code。',
   errors: {
     'URL is too long for a reliable scan': '網址太長，無法可靠掃描',
@@ -251,7 +247,6 @@ const ja: Messages = {
   holdOverhead: '木を真上から見てから読み取ってください。',
   enterPassword: 'パスワードを入力してから読み取ってください。',
   wrongPassword: 'パスワードが違います。',
-  importStillNote: '静止画を読み込み、木立を読み取ってください。',
   webglUnavailable: 'WebGLが使えません。読み取り可能なQRはダウンロードできます。',
   errors: {
     'URL is too long for a reliable scan': 'URLが長すぎて確実に読み取れません',
@@ -302,7 +297,6 @@ const ru: Messages = {
   holdOverhead: 'Посмотрите на дерево сверху, затем читайте.',
   enterPassword: 'Введите пароль, затем читайте.',
   wrongPassword: 'Неверный пароль.',
-  importStillNote: 'Откройте кадр, затем прочитайте рощу.',
   webglUnavailable: 'WebGL недоступен. QR-код для сканирования всё равно можно скачать.',
   errors: {
     'URL is too long for a reliable scan': 'Ссылка слишком длинная для надёжного сканирования',
@@ -353,7 +347,6 @@ const fr: Messages = {
   holdOverhead: 'Regardez l\u2019arbre d\u2019en haut, puis lisez.',
   enterPassword: 'Saisissez le mot de passe, puis lisez.',
   wrongPassword: 'Mot de passe incorrect.',
-  importStillNote: 'Ouvrez une image, puis lisez le bosquet.',
   webglUnavailable: 'WebGL est indisponible. Vous pouvez tout de même télécharger un QR lisible.',
   errors: {
     'URL is too long for a reliable scan': 'L\u2019URL est trop longue pour une lecture fiable',

@@ -3,13 +3,14 @@ import {
   DEFAULT_PAYLOAD,
   MAX_PAYLOAD_CHARS,
   TOO_LONG_MESSAGE,
+  defaultPayload,
   normalizePayload,
   payloadError,
 } from './payload'
 
 describe('normalizePayload', () => {
   it('uses the default site URL when input is empty', () => {
-    expect(DEFAULT_PAYLOAD).toBe('https://www.cloudflare.com/')
+    expect(DEFAULT_PAYLOAD).toBe('https://www.example.com/')
     expect(normalizePayload('')).toBe(DEFAULT_PAYLOAD)
     expect(normalizePayload('   ')).toBe(DEFAULT_PAYLOAD)
   })
@@ -32,6 +33,20 @@ describe('normalizePayload', () => {
 
   it('trims surrounding whitespace', () => {
     expect(normalizePayload('  https://example.com/  ')).toBe('https://example.com/')
+  })
+})
+
+describe('defaultPayload', () => {
+  it('keeps example.com without an origin and on local hosts', () => {
+    expect(defaultPayload()).toBe(DEFAULT_PAYLOAD)
+    expect(defaultPayload('http://localhost:5173')).toBe(DEFAULT_PAYLOAD)
+    expect(defaultPayload('http://127.0.0.1:5199')).toBe(DEFAULT_PAYLOAD)
+    expect(defaultPayload('http://[::1]/')).toBe(DEFAULT_PAYLOAD)
+  })
+
+  it('uses the deployed origin', () => {
+    expect(defaultPayload('https://ictree.example.workers.dev')).toBe('https://ictree.example.workers.dev/')
+    expect(defaultPayload('https://grove.example.com/')).toBe('https://grove.example.com/')
   })
 })
 
