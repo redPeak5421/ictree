@@ -86,6 +86,20 @@ describe('share params', () => {
     })).not.toContain('k=')
   })
 
+  it('round-trips seamless blocks through k=s', () => {
+    expect(parseShareParams('?u=ok&k=s').ink).toBe('solid')
+    const search = buildShareSearch({
+      url: 'ok',
+      season: 'autumn',
+      tree: 'cherry',
+      locked: false,
+      mode: 'create',
+      ink: 'solid',
+    })
+    expect(search).toContain('k=s')
+    expect(parseShareParams(search).ink).toBe('solid')
+  })
+
   it('round-trips a binary wrapped token in the share search', async () => {
     const token = await wrapSecret('https://example.com/a b', 'grove')
     const search = buildShareSearch({

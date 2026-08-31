@@ -86,7 +86,7 @@ function InkDissolve({
   }, [scene])
   useFrame((_, dt) => {
     const state = scene.current
-    const target = forcePlants ? 0 : inkMixTarget(ink === 'blocks', state.pitch)
+    const target = forcePlants ? 0 : inkMixTarget(ink !== 'plants', state.pitch)
     state.inkMix = stepInkMix(state.inkMix, target, Math.min(dt, 0.05), reduced)
     fadeGroup(plantRef.current, plantInkOpacity(state.inkMix), 0)
     fadeGroup(tileRef.current, blockInkOpacity(state.inkMix), 0)
@@ -273,7 +273,7 @@ export function TreeCanvas({
           text={reveal.text}
           closing={reveal.closing}
           reduced={reduced}
-          waitForPlants={ink === 'blocks'}
+          waitForPlants={ink !== 'plants'}
           onTextReveal={onRevealTextReveal}
           onSettled={onRevealSettled}
           onClosed={onRevealClosed}
@@ -313,7 +313,7 @@ export function TreeCanvas({
         onOverhead={onOverhead}
       />
       <Ground grid={grid} rig={rig} scene={scene} />
-      {ink === 'blocks' ? (
+      {ink !== 'plants' ? (
         <InkDissolve
           scene={scene}
           ink={ink}
@@ -325,7 +325,7 @@ export function TreeCanvas({
               {foliage}
             </>
           }
-          tiles={<QrTiles grid={grid} scene={scene} rig={rig} />}
+          tiles={<QrTiles grid={grid} scene={scene} rig={rig} solid={ink === 'solid'} />}
         />
       ) : (
         <>

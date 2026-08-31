@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockInkOpacity, cameraPose, inkMixTarget, isOverhead, OVERHEAD, plantInkOpacity, sceneryOpacity, squareYaw, stepAngleGlide, stepInkMix, VIEW_MS } from './view'
+import { blockInkOpacity, cameraPose, inkMixTarget, isOverhead, OVERHEAD, plantInkOpacity, sceneryOpacity, squareYaw, stepAngleGlide, stepInkMix, TILE_GAPPED, TILE_LOOSE, TILE_SOLID, tileEdge, VIEW_MS } from './view'
 import { VIEW_PITCH, VIEW_YAW } from './tree'
 
 const dot = (a: number[], b: number[]) => a[0]! * b[0]! + a[1]! * b[1]! + a[2]! * b[2]!
@@ -112,6 +112,21 @@ describe('view helpers', () => {
     expect(mix).toBeLessThanOrEqual(mid)
     mix = stepInkMix(0, 1, 1 / 60, true)
     expect(mix).toBe(1)
+  })
+
+  it('keeps tile scale continuous when either block style returns to the tree', () => {
+    expect(tileEdge(1, 0)).toBeCloseTo(TILE_GAPPED, 9)
+    expect(tileEdge(1, 1)).toBe(TILE_SOLID)
+    expect(tileEdge(0, 0)).toBeCloseTo(TILE_LOOSE, 9)
+    expect(tileEdge(0, 1)).toBeCloseTo(TILE_LOOSE, 9)
+    for (const solidity of [0, 1]) {
+      let prev = tileEdge(1, solidity)
+      for (let step = 239; step >= 0; step--) {
+        const next = tileEdge(step / 240, solidity)
+        expect(Math.abs(next - prev)).toBeLessThan(0.01)
+        prev = next
+      }
+    }
   })
 
   it('glides to a target and pins it exactly', () => {

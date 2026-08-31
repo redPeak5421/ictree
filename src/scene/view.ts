@@ -56,6 +56,24 @@ export function stepInkMix(current: number, target: number, dt: number, instant 
   return next
 }
 
+/** Loose crown blocks start this wide before settling into the mosaic. */
+export const TILE_LOOSE = 0.36
+/** Settled gapped tiles leave a grout line on the 1-unit module grid. */
+export const TILE_GAPPED = 0.96
+/** Settled solid tiles meet edge to edge — no whitespace between modules. */
+export const TILE_SOLID = 1
+
+/**
+ * Tile footprint during the camera-led conversion. The settled edge blends
+ * the gapped and solid styles by `solidity`, and the whole width rides the
+ * same eased mix as the rest of the conversion, so the trip back to the tree
+ * is continuous in scale for both styles and a style switch never pops.
+ */
+export function tileEdge(mix: number, solidity: number): number {
+  const settled = TILE_GAPPED + (TILE_SOLID - TILE_GAPPED) * solidity
+  return TILE_LOOSE + (settled - TILE_LOOSE) * mix
+}
+
 export function plantInkOpacity(mix: number): number {
   return 1 - smoothstep(0.05, 0.88, mix)
 }

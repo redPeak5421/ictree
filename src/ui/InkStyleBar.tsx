@@ -1,7 +1,7 @@
 import { useT } from '../i18n/useLocale'
 import type { InkStyle } from '../share/params'
 
-const OPTIONS: InkStyle[] = ['plants', 'blocks']
+const OPTIONS: InkStyle[] = ['plants', 'blocks', 'solid']
 
 export function InkStyleBar({ ink, onChange }: { ink: InkStyle; onChange: (ink: InkStyle) => void }) {
   const t = useT()

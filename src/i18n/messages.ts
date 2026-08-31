@@ -32,7 +32,7 @@ export interface Messages {
   tree: string
   trees: Record<TreeSpecies, string>
   inkStyle: string
-  inkStyles: { plants: string; blocks: string }
+  inkStyles: { plants: string; blocks: string; solid: string }
   share: string
   shareGroup: string
   exportGroup: string
@@ -79,7 +79,7 @@ const en: Messages = {
   tree: 'Tree',
   trees: { cherry: 'Cherry', apple: 'Apple', pine: 'Pine', willow: 'Willow', maple: 'Maple' },
   inkStyle: 'Style',
-  inkStyles: { plants: 'Plants', blocks: 'Blocks' },
+  inkStyles: { plants: 'Plants', blocks: 'Mosaic', solid: 'Pixel' },
   share: 'Share',
   shareGroup: 'Share',
   exportGroup: 'Export',
@@ -131,7 +131,7 @@ const zhCN: Messages = {
   tree: '树种',
   trees: { cherry: '樱花', apple: '苹果', pine: '松树', willow: '柳树', maple: '枫树' },
   inkStyle: '样式',
-  inkStyles: { plants: '植物', blocks: '色块' },
+  inkStyles: { plants: '植物', blocks: '马赛克', solid: '像素' },
   share: '分享',
   shareGroup: '分享',
   exportGroup: '导出',
@@ -183,7 +183,7 @@ const zhTW: Messages = {
   tree: '樹種',
   trees: { cherry: '櫻花', apple: '蘋果', pine: '松樹', willow: '柳樹', maple: '楓樹' },
   inkStyle: '樣式',
-  inkStyles: { plants: '植物', blocks: '色塊' },
+  inkStyles: { plants: '植物', blocks: '馬賽克', solid: '像素' },
   share: '分享',
   shareGroup: '分享',
   exportGroup: '匯出',
@@ -235,7 +235,7 @@ const ja: Messages = {
   tree: '樹種',
   trees: { cherry: '桜', apple: 'りんご', pine: '松', willow: '柳', maple: 'もみじ' },
   inkStyle: '表示',
-  inkStyles: { plants: '植物', blocks: '色ブロック' },
+  inkStyles: { plants: '植物', blocks: 'モザイク', solid: 'ピクセル' },
   share: '共有',
   shareGroup: '共有',
   exportGroup: '書き出し',
@@ -287,7 +287,7 @@ const ru: Messages = {
   tree: 'Дерево',
   trees: { cherry: 'Сакура', apple: 'Яблоня', pine: 'Сосна', willow: 'Ива', maple: 'Клён' },
   inkStyle: 'Вид',
-  inkStyles: { plants: 'Растения', blocks: 'Плитки' },
+  inkStyles: { plants: 'Растения', blocks: 'Мозаика', solid: 'Пиксели' },
   share: 'Поделиться',
   shareGroup: 'Поделиться',
   exportGroup: 'Экспорт',
@@ -339,7 +339,7 @@ const fr: Messages = {
   tree: 'Arbre',
   trees: { cherry: 'Cerisier', apple: 'Pommier', pine: 'Pin', willow: 'Saule', maple: 'Érable' },
   inkStyle: 'Style',
-  inkStyles: { plants: 'Plantes', blocks: 'Blocs' },
+  inkStyles: { plants: 'Plantes', blocks: 'Mosaïque', solid: 'Pixels' },
   share: 'Partager',
   shareGroup: 'Partager',
   exportGroup: 'Exporter',

@@ -6,7 +6,7 @@ import type { ModuleGrid } from '../qr/types'
 import type { SceneRef } from './sceneState'
 import type { TreeRig } from './tree'
 import { isGrassCell } from './treeSpecies'
-import { easeInOutCubic } from './view'
+import { easeInOutCubic, stepInkMix, tileEdge } from './view'
 
 const dummy = new Object3D()
 const tint = new Color()
@@ -19,11 +19,12 @@ function spinOf(x: number, y: number): number {
  * One solid tile per dark module. Finder corners wear the tree's ink,
  * meadow tiles wear grass, canopy tiles wear leaves. During the camera-led
  * conversion they start in the crown as loose, tilted blocks and settle
- * into the flat mosaic.
+ * into the flat mosaic — grouted or edge-to-edge, by `solid`.
  */
-export function QrTiles({ grid, scene, rig }: { grid: ModuleGrid; scene: SceneRef; rig: TreeRig }) {
+export function QrTiles({ grid, scene, rig, solid }: { grid: ModuleGrid; scene: SceneRef; rig: TreeRig; solid: boolean }) {
   const mesh = useRef<InstancedMesh>(null)
   const key = useRef('')
+  const solidity = useRef(solid ? 1 : 0)
   const dark = useMemo(() => grid.cells.filter((cell) => cell.dark), [grid])
   const half = (grid.size - 1) / 2
   const heights = useMemo(() => {
@@ -43,10 +44,12 @@ export function QrTiles({ grid, scene, rig }: { grid: ModuleGrid; scene: SceneRe
     return out
   }, [rig.leaves, grid.size, half])
 
-  useFrame(() => {
+  useFrame((_, dt) => {
     const inst = mesh.current
     if (!inst) return
     const t = easeInOutCubic(scene.current.inkMix)
+    solidity.current = stepInkMix(solidity.current, solid ? 1 : 0, Math.min(dt, 0.05))
+    const sx = tileEdge(t, solidity.current)
     dark.forEach((cell, index) => {
       const grass = isGrassCell(cell.x, cell.y, grid.size)
       const startY = grass ? 0.1 : heights[cell.y * grid.size + cell.x]!
@@ -54,7 +57,6 @@ export function QrTiles({ grid, scene, rig }: { grid: ModuleGrid; scene: SceneRe
       const spin = spinOf(cell.x, cell.y)
       dummy.position.set(cell.x - half, y, cell.y - half)
       dummy.rotation.set((1 - t) * 0.42, (1 - t) * spin, (1 - t) * 0.18)
-      const sx = 0.36 + 0.6 * t
       const sy = grass ? 0.12 : 0.7 - 0.58 * t
       dummy.scale.set(sx, Math.max(0.08, sy), sx)
       dummy.updateMatrix()

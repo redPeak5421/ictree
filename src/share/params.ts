@@ -3,7 +3,8 @@ import { isTreeSpecies, type TreeSpecies } from '../scene/treeSpecies'
 import { isWrapped } from './secret'
 
 export type AppMode = 'create' | 'reveal'
-export type InkStyle = 'plants' | 'blocks'
+/** `blocks` keeps a grout line between tiles; `solid` tiles meet edge to edge. */
+export type InkStyle = 'plants' | 'blocks' | 'solid'
 
 export interface ShareState {
   url: string
@@ -38,7 +39,8 @@ export function parseShareParams(search: string): ShareState {
   const locked = q.get('e') === '1' || isWrapped(url)
   const modeRaw = q.get('m')
   const mode: AppMode = modeRaw === 'r' || locked ? 'reveal' : 'create'
-  const ink: InkStyle = q.get('k') === 'b' ? 'blocks' : 'plants'
+  const inkRaw = q.get('k')
+  const ink: InkStyle = inkRaw === 'b' ? 'blocks' : inkRaw === 's' ? 'solid' : 'plants'
   return {
     url,
     season: SEASONS.includes(seasonRaw as Season) ? (seasonRaw as Season) : 'autumn',
@@ -57,6 +59,7 @@ export function buildShareSearch(state: ShareState): string {
   if (state.locked) q.set('e', '1')
   if (state.mode === 'reveal') q.set('m', 'r')
   if (state.ink === 'blocks') q.set('k', 'b')
+  if (state.ink === 'solid') q.set('k', 's')
   return `?${q.toString()}`
 }
 
