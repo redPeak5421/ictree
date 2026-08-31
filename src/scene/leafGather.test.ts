@@ -5,6 +5,7 @@ import {
   LEAF_GATHER_PLANT_READY_INK_MIX,
   LEAF_GATHER_TEXT_REVEAL_PROGRESS,
   canAdvanceLeafGather,
+  initialLeafGatherProgress,
   leafGatherColorCacheKey,
   leafGatherShaderReferencePose,
   leafGatherEndpointTransition,
@@ -346,5 +347,14 @@ describe('leafGatherShaderReferencePose', () => {
     const secondMiddle = leafGatherShaderReferencePose(source, packed, 1, 0.62, frame)
     expect(firstMiddle.position).not.toEqual(secondMiddle.position)
     expect(firstMiddle.quaternion).not.toEqual(secondMiddle.quaternion)
+  })
+})
+
+describe('initialLeafGatherProgress', () => {
+  it('starts a remounted close at the text endpoint so it does not finish immediately', () => {
+    expect(initialLeafGatherProgress(false)).toBe(0)
+    expect(initialLeafGatherProgress(true)).toBe(1)
+    expect(stepLeafGatherProgress(initialLeafGatherProgress(true), 0.016, 'closing', false).done).toBe(false)
+    expect(stepLeafGatherProgress(0, 0.016, 'closing', false).done).toBe(true)
   })
 })

@@ -79,6 +79,12 @@ export interface LeafGatherLineBox {
 
 export type LeafGatherDirection = 'opening' | 'closing'
 
+/** A remount mid-close must start at the text; progress 0 would finish immediately. */
+export function initialLeafGatherProgress(closing: boolean): number {
+  return closing ? 1 : 0
+}
+
+
 export interface LeafGatherStep {
   progress: number
   done: boolean

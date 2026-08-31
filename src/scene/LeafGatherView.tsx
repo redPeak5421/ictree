@@ -16,6 +16,7 @@ import {
 import { toLumaHex } from '../qr/contrast'
 import {
   canAdvanceLeafGather,
+  initialLeafGatherProgress,
   leafGatherColorCacheKey,
   leafGatherEndpointTransition,
   leafGatherTargetPixelSize,
@@ -497,7 +498,7 @@ export function LeafGather({
   const leafRefs = useRef<Partial<Record<LeafShape, InstancedMesh | null>>>({})
   const fillerRefs = useRef<Partial<Record<LeafShape, InstancedMesh | null>>>({})
   const ornamentRef = useRef<InstancedMesh>(null)
-  const progressRef = useRef(0)
+  const progressRef = useRef(initialLeafGatherProgress(closing))
   const initializedMeshesRef = useRef(new WeakSet<InstancedMesh>())
   const endpointStateRef = useRef<LeafGatherEndpointState>({
     direction: closing ? 'closing' : 'opening',

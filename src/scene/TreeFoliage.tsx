@@ -238,7 +238,7 @@ export function TreeFoliage({
       ornaments.instanceMatrix.needsUpdate = true
     }
     colorKey.current = ''
-  }, [rig, groups, ornamentKind, limbs])
+  }, [rig, groups, ornamentKind, limbs, shed])
 
   useFrame(({ clock }) => {
     const { colors, pitch } = scene.current
@@ -390,19 +390,22 @@ export function TreeFoliage({
           <meshBasicMaterial map={barkMap} />
         </instancedMesh>
       )}
-      {!shed && LIVE_SHAPES.map((shape) => (
-        <instancedMesh
-          key={`${shape}${groups.leaves[shape].length}`}
-          ref={(mesh) => {
-            leafRefs.current[shape] = mesh
-          }}
-          args={[undefined, undefined, Math.max(1, groups.leaves[shape].length)]}
-          frustumCulled={false}
-        >
-          <planeGeometry args={[1, 1]} />
-          {cutout(leafMap(shape))}
-        </instancedMesh>
-      ))}
+      {/* Hide — do not unmount — while LeafGather flies the same instances. */}
+      <group visible={!shed}>
+        {LIVE_SHAPES.map((shape) => (
+          <instancedMesh
+            key={`${shape}${groups.leaves[shape].length}`}
+            ref={(mesh) => {
+              leafRefs.current[shape] = mesh
+            }}
+            args={[undefined, undefined, Math.max(1, groups.leaves[shape].length)]}
+            frustumCulled={false}
+          >
+            <planeGeometry args={[1, 1]} />
+            {cutout(leafMap(shape))}
+          </instancedMesh>
+        ))}
+      </group>
       <instancedMesh ref={finderBladeRef} args={[undefined, undefined, groups.finder.blade.length]} key={`fb${groups.finder.blade.length}`} frustumCulled={false}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={finderBladeMap} transparent alphaTest={0.42} side={2} />
@@ -415,25 +418,27 @@ export function TreeFoliage({
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={carpetMap} transparent alphaTest={0.42} side={2} />
       </instancedMesh>
-      {!shed && LIVE_SHAPES.filter((shape) => groups.filler[shape]?.length).map((shape) => (
-        <instancedMesh
-          key={`f${shape}${groups.filler[shape].length}`}
-          ref={(mesh) => {
-            fillerRefs.current[shape] = mesh
-          }}
-          args={[undefined, undefined, groups.filler[shape].length]}
-          frustumCulled={false}
-        >
-          <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial map={fillerMap(shape)} transparent alphaTest={0.42} side={2} />
-        </instancedMesh>
-      ))}
-      {!shed && groups.ornaments.length > 0 && (
-        <instancedMesh ref={ornamentRef} args={[undefined, undefined, groups.ornaments.length]} key={`or${groups.ornaments.length}${ornamentKind}`} frustumCulled={false}>
-          <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial map={ornamentKind === 'fruit' ? fruitMap : blossomMap} transparent alphaTest={0.42} side={2} />
-        </instancedMesh>
-      )}
+      <group visible={!shed}>
+        {LIVE_SHAPES.filter((shape) => groups.filler[shape]?.length).map((shape) => (
+          <instancedMesh
+            key={`f${shape}${groups.filler[shape].length}`}
+            ref={(mesh) => {
+              fillerRefs.current[shape] = mesh
+            }}
+            args={[undefined, undefined, groups.filler[shape].length]}
+            frustumCulled={false}
+          >
+            <planeGeometry args={[1, 1]} />
+            <meshBasicMaterial map={fillerMap(shape)} transparent alphaTest={0.42} side={2} />
+          </instancedMesh>
+        ))}
+        {groups.ornaments.length > 0 && (
+          <instancedMesh ref={ornamentRef} args={[undefined, undefined, groups.ornaments.length]} key={`or${groups.ornaments.length}${ornamentKind}`} frustumCulled={false}>
+            <planeGeometry args={[1, 1]} />
+            <meshBasicMaterial map={ornamentKind === 'fruit' ? fruitMap : blossomMap} transparent alphaTest={0.42} side={2} />
+          </instancedMesh>
+        )}
+      </group>
     </group>
   )
 }
