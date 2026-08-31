@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Color, InstancedMesh, Object3D, type Texture } from 'three'
+import { Color, InstancedMesh, Mesh, MeshBasicMaterial, Object3D, type Texture } from 'three'
 import { lumaOfHex, toLumaHex } from '../qr/contrast'
 import type { FinderCarpetInstance, FinderVegetationInstance } from './grassLayout'
 import { barkTexture, carpetTexture, fruitTexture, leafTexture, petalTexture, vegetationTexture } from './leafTexture'
@@ -17,13 +17,17 @@ import type { SceneRef } from './sceneState'
 import { pickFruitOrnaments } from './scatter'
 import type { FillerInstance, LeafInstance, TreeRig } from './tree'
 import { branchTones, leafLuma } from './treeAppearance'
-import type { TreeSpecies } from './treeSpecies'
+import { PINE_ENABLED, type TreeSpecies } from './treeSpecies'
 
 const dummy = new Object3D()
 const tint = new Color()
+const PINE_SHAPES: readonly LeafShape[] = ['pine', 'pineTwig', 'pineCanopy']
+const LIVE_SHAPES: readonly LeafShape[] = PINE_ENABLED
+  ? LEAF_SHAPES
+  : LEAF_SHAPES.filter((shape) => !PINE_SHAPES.includes(shape))
 
 function byShape<T>(): Record<LeafShape, T[]> {
-  return Object.fromEntries(LEAF_SHAPES.map((shape) => [shape, [] as T[]])) as Record<LeafShape, T[]>
+  return Object.fromEntries(LIVE_SHAPES.map((shape) => [shape, [] as T[]])) as Record<LeafShape, T[]>
 }
 
 /** Anything a blossom or fruit can hang from. */
@@ -60,13 +64,16 @@ export function TreeFoliage({
   scene,
   tree,
   season,
+  shed = false,
 }: {
   rig: TreeRig
   scene: SceneRef
   tree: TreeSpecies
   season: Season
+  shed?: boolean
 }) {
-  const branchRef = useRef<InstancedMesh>(null)
+  const trunkRef = useRef<Mesh>(null)
+  const limbRef = useRef<InstancedMesh>(null)
   const leafRefs = useRef<Partial<Record<LeafShape, InstancedMesh | null>>>({})
   const finderBladeRef = useRef<InstancedMesh>(null)
   const finderBroadRef = useRef<InstancedMesh>(null)
@@ -75,7 +82,7 @@ export function TreeFoliage({
   const ornamentRef = useRef<InstancedMesh>(null)
   const leafMaps = useMemo(() => {
     const maps = {} as Record<LeafShape, Texture>
-    for (const shape of LEAF_SHAPES) maps[shape] = leafTexture(shape)
+    for (const shape of LIVE_SHAPES) maps[shape] = leafTexture(shape)
     return maps
   }, [])
   const finderBladeMap = useMemo(() => vegetationTexture('blade', 'flat'), [])
@@ -98,13 +105,13 @@ export function TreeFoliage({
 
   const groups = useMemo<Groups>(() => {
     const leaves = byShape<LeafInstance>()
-    for (const leaf of rig.leaves) leaves[leaf.shape].push(leaf)
+    for (const leaf of rig.leaves) leaves[leaf.shape]?.push(leaf)
     const filler = byShape<FillerInstance>()
     // An apple tree in fruit thins its crown so the apples show.
     const thin = ornamentKind === 'fruit'
     rig.filler.forEach((leaf, index) => {
       if (thin && index % 3 === 0) return
-      filler[leaf.shape].push(leaf)
+      filler[leaf.shape]?.push(leaf)
     })
     // Blossoms hang on the outer half of the crown. Apples are a fixed
     // handful of single fruits, shuffled across the modules.
@@ -130,10 +137,35 @@ export function TreeFoliage({
     }
   }, [rig, ornamentKind])
 
+  const limbs = useMemo(() => rig.branches.filter((branch) => branch.shade === 1), [rig.branches])
+  const bole = useMemo(() => {
+    const parts = rig.branches.filter((branch) => branch.shade === 0)
+    if (parts.length === 0) return null
+    let y0 = Infinity
+    let y1 = -Infinity
+    let rBase = 0
+    let rTop = Infinity
+    for (const part of parts) {
+      const half = part.scale[1] / 2
+      const lo = part.position[1] - half
+      const hi = part.position[1] + half
+      if (lo < y0) y0 = lo
+      if (hi > y1) y1 = hi
+      rBase = Math.max(rBase, part.scale[0])
+      rTop = Math.min(rTop, part.scale[0])
+    }
+    return {
+      y: (y0 + y1) / 2,
+      h: Math.max(0.2, y1 - y0),
+      rBase,
+      rTop: Math.min(Number.isFinite(rTop) ? rTop : rBase * 0.72, rBase * 0.82),
+    }
+  }, [rig.branches])
+
   useLayoutEffect(() => {
-    const branches = branchRef.current
+    const branches = limbRef.current
     if (branches) {
-      rig.branches.forEach((branch, index) => {
+      limbs.forEach((branch, index) => {
         dummy.position.set(...branch.position)
         dummy.quaternion.set(...branch.quaternion)
         dummy.scale.set(...branch.scale)
@@ -143,10 +175,10 @@ export function TreeFoliage({
       branches.instanceMatrix.needsUpdate = true
     }
 
-    for (const shape of LEAF_SHAPES) {
+    for (const shape of LIVE_SHAPES) {
       const mesh = leafRefs.current[shape]
       const items = groups.leaves[shape]
-      if (!mesh) continue
+      if (!mesh || !items) continue
       items.forEach((leaf, index) => {
         dummy.position.set(...leaf.position)
         dummy.rotation.set(...leaf.euler, 'YXZ')
@@ -169,10 +201,10 @@ export function TreeFoliage({
       carpet.instanceMatrix.needsUpdate = true
     }
 
-    for (const shape of LEAF_SHAPES) {
+    for (const shape of LIVE_SHAPES) {
       const mesh = fillerRefs.current[shape]
       const items = groups.filler[shape]
-      if (!mesh) continue
+      if (!mesh || !items) continue
       items.forEach((leaf, index) => {
         dummy.position.set(...leaf.position)
         dummy.rotation.set(...leaf.euler, 'YXZ')
@@ -206,7 +238,7 @@ export function TreeFoliage({
       ornaments.instanceMatrix.needsUpdate = true
     }
     colorKey.current = ''
-  }, [rig, groups, ornamentKind])
+  }, [rig, groups, ornamentKind, limbs])
 
   useFrame(({ clock }) => {
     const { colors, pitch } = scene.current
@@ -230,11 +262,13 @@ export function TreeFoliage({
     if (next === colorKey.current) return
     colorKey.current = next
 
-    const branches = branchRef.current
+    const [bark, limb] = branchTones(colors, pitch)
+    const trunk = trunkRef.current
+    if (trunk?.material instanceof MeshBasicMaterial) trunk.material.color.set(bark)
+    const branches = limbRef.current
     if (branches) {
-      const [bark, limb] = branchTones(colors, pitch)
-      rig.branches.forEach((branch, index) => {
-        tint.set(branch.shade === 0 ? bark : limb)
+      limbs.forEach((_branch, index) => {
+        tint.set(limb)
         branches.setColorAt(index, tint)
       })
       if (branches.instanceColor) branches.instanceColor.needsUpdate = true
@@ -242,7 +276,7 @@ export function TreeFoliage({
 
     const tones = foliageTones(colors)
     const inkCache = new Map<string, Color>()
-    for (const shape of LEAF_SHAPES) {
+    for (const shape of LIVE_SHAPES) {
       const mesh = leafRefs.current[shape]
       const items = groups.leaves[shape]
       if (!mesh) continue
@@ -344,11 +378,19 @@ export function TreeFoliage({
 
   return (
     <group>
-      <instancedMesh ref={branchRef} args={[undefined, undefined, rig.branches.length]} key={`b${rig.branches.length}`} frustumCulled={false}>
-        <cylinderGeometry args={[0.88, 1, 1, 12]} />
-        <meshBasicMaterial map={barkMap} />
-      </instancedMesh>
-      {LEAF_SHAPES.map((shape) => (
+      {bole && (
+        <mesh ref={trunkRef} position={[0, bole.y, 0]}>
+          <cylinderGeometry args={[bole.rTop, bole.rBase, bole.h, 24]} />
+          <meshBasicMaterial map={barkMap} />
+        </mesh>
+      )}
+      {limbs.length > 0 && (
+        <instancedMesh ref={limbRef} args={[undefined, undefined, limbs.length]} key={`l${limbs.length}`} frustumCulled={false}>
+          <cylinderGeometry args={[0.88, 1, 1, 10]} />
+          <meshBasicMaterial map={barkMap} />
+        </instancedMesh>
+      )}
+      {!shed && LIVE_SHAPES.map((shape) => (
         <instancedMesh
           key={`${shape}${groups.leaves[shape].length}`}
           ref={(mesh) => {
@@ -373,7 +415,7 @@ export function TreeFoliage({
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={carpetMap} transparent alphaTest={0.42} side={2} />
       </instancedMesh>
-      {LEAF_SHAPES.filter((shape) => groups.filler[shape].length > 0).map((shape) => (
+      {!shed && LIVE_SHAPES.filter((shape) => groups.filler[shape]?.length).map((shape) => (
         <instancedMesh
           key={`f${shape}${groups.filler[shape].length}`}
           ref={(mesh) => {
@@ -386,7 +428,7 @@ export function TreeFoliage({
           <meshBasicMaterial map={fillerMap(shape)} transparent alphaTest={0.42} side={2} />
         </instancedMesh>
       ))}
-      {groups.ornaments.length > 0 && (
+      {!shed && groups.ornaments.length > 0 && (
         <instancedMesh ref={ornamentRef} args={[undefined, undefined, groups.ornaments.length]} key={`or${groups.ornaments.length}${ornamentKind}`} frustumCulled={false}>
           <planeGeometry args={[1, 1]} />
           <meshBasicMaterial map={ornamentKind === 'fruit' ? fruitMap : blossomMap} transparent alphaTest={0.42} side={2} />

@@ -12,6 +12,12 @@ export interface SceneState {
   yaw: number
   /** Camera elevation above the ground, radians; OVERHEAD is straight down. */
   pitch: number
+  /** Last yaw actually applied to the rendered camera. */
+  renderedYaw: number
+  /** Last pitch actually applied to the rendered camera. */
+  renderedPitch: number
+  /** Last zoom actually applied to the rendered camera projection. */
+  renderedZoom: number
   /** Angular velocity left over from a drag, radians per second. */
   spinYaw: number
   spinPitch: number

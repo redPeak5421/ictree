@@ -1,5 +1,5 @@
-import { foliageTones, hexRgb, rgbHex, type SceneColors } from '../scene/palettes'
-import { isGrassCell } from '../scene/treeSpecies'
+import { finderInkTones, foliageTones, hexRgb, rgbHex, type SceneColors } from '../scene/palettes'
+import { isCornerCell, isGrassCell } from '../scene/treeSpecies'
 import type { ModuleCell } from './types'
 
 /**
@@ -80,6 +80,10 @@ function fillAt(hex: string, cap: number): string {
 export function moduleFillHex(cell: ModuleCell, colors: SceneColors, size: number, cap = SCAN_LUMA): string {
   if (!cell.dark) return CREAM
   const bucket = bucketOf(cell)
+  if (isCornerCell(cell.x, cell.y, size)) {
+    const tone = finderInkTones(colors)[bucket]!
+    return fillAt(toLumaHex(tone, lumaOfHex(colors.finder)), cap)
+  }
   if (isGrassCell(cell.x, cell.y, size)) {
     return fillAt(bucket < 2 ? colors.grass : colors.grassTip, cap)
   }

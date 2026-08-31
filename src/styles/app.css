@@ -71,6 +71,12 @@ body,
   gap: 10px;
 }
 
+.chrome.is-locked {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .top-row {
   display: flex;
   align-items: center;
@@ -204,17 +210,6 @@ body,
   height: 40px;
   padding-left: 0;
   font-size: 13.5px;
-}
-
-.reveal-panel .url-field {
-  height: 44px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-input);
-  background: var(--panel);
-}
-
-.reveal-panel .url-field:focus {
-  border-color: #c9b9a4;
 }
 
 .share {
@@ -397,16 +392,33 @@ body,
   stroke-width: 1.2;
 }
 
-.reveal-panel {
+.reveal-error {
+  margin: 0;
+}
+
+.reveal-actions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
 }
 
-.reveal-link {
-  color: var(--ink);
-  font: 14px/1.4 var(--font);
-  word-break: break-all;
+.scan-btn {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  border: 0;
+  border-radius: var(--radius-input);
+  background: var(--share);
+  color: var(--share-ink);
+  padding: 0 16px;
+  font: 500 14px/1 var(--font);
+  text-align: center;
+  cursor: pointer;
+}
+
+.scan-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .action-btn {
@@ -503,6 +515,154 @@ a:focus-visible {
 @media (max-width: 380px) {
   .segment span + span {
     display: none;
+  }
+}
+
+.scan-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.scan-words {
+  position: absolute;
+  left: 7%;
+  top: 22%;
+  z-index: 2;
+  width: 86%;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--scan-leaf);
+  cursor: copy;
+  pointer-events: none;
+  font-size: clamp(12px, 4.4vw, 40px);
+  font-weight: 700;
+  text-align: center;
+  opacity: 0;
+  transition: opacity var(--scan-copy-duration, 504ms) cubic-bezier(0.2, 0.65, 0.3, 1);
+}
+
+.scan-words-base,
+.scan-words-texture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.scan-words-base {
+  color: var(--scan-leaf);
+}
+
+.scan-words-texture {
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  background-repeat: repeat;
+  background-position: center;
+  background-size: clamp(22px, 1.15em, 52px);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  pointer-events: none;
+}
+
+.scan-reveal-line {
+  display: block;
+  width: 100%;
+  min-height: 1.16em;
+  overflow: visible;
+  white-space: pre;
+}
+
+.scan-words.has-raster .scan-reveal-line {
+  position: absolute;
+  min-height: 0;
+  text-align: center;
+}
+
+.scan-words.has-raster {
+  transform-origin: top left;
+}
+
+.scan-reveal.is-materializing .scan-words,
+.scan-reveal.is-settled .scan-words,
+.scan-reveal.is-reduced .scan-words {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.scan-reveal.is-closing .scan-words {
+  opacity: 0;
+  transition: opacity 360ms ease;
+  pointer-events: none;
+}
+
+.scan-reveal.is-reduced .scan-words,
+.scan-reveal.is-reduced.is-closing .scan-words {
+  transition: none;
+}
+
+.scan-copied {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 2;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--scan-leaf) 18%, var(--panel));
+  color: var(--ink);
+  font: 12px/1 var(--font);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.scan-dismiss {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 2;
+  min-width: 108px;
+  height: 38px;
+  border: 1px solid color-mix(in srgb, var(--scan-leaf) 32%, var(--line));
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--ink);
+  padding: 0 16px;
+  box-shadow: 0 8px 24px rgba(54, 43, 31, 0.12);
+  font: 500 13px/1 var(--font);
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.scan-dismiss:hover {
+  opacity: 1;
+  background: var(--panel);
+  transform: translateY(-1px);
+}
+
+.scan-dismiss:focus-visible {
+  opacity: 1;
+  outline: 2px solid color-mix(in srgb, var(--scan-leaf) 58%, var(--ink));
+  outline-offset: 2px;
+}
+
+.scan-reveal.is-closing .scan-dismiss,
+.scan-reveal.is-closing .scan-copied {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-words {
+    opacity: 1;
+    transition: none;
   }
 }
 

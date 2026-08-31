@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildShareSearch, parseShareParams } from './params'
+import { wrapSecret } from './secret'
 
 describe('share params', () => {
   it('round-trips url, season, tree, lock, and mode', () => {
@@ -40,8 +41,8 @@ describe('share params', () => {
       mode: 'create',
       ink: 'plants',
     })
-    expect(parseShareParams('?u=gv1.abc&s=summer')).toEqual({
-      url: 'gv1.abc',
+    expect(parseShareParams('?u=gv2.abc&s=summer')).toEqual({
+      url: 'gv2.abc',
       season: 'summer',
       tree: 'cherry',
       locked: true,
@@ -83,5 +84,19 @@ describe('share params', () => {
       mode: 'create',
       ink: 'plants',
     })).not.toContain('k=')
+  })
+
+  it('round-trips a binary wrapped token in the share search', async () => {
+    const token = await wrapSecret('https://example.com/a b', 'grove')
+    const search = buildShareSearch({
+      url: token,
+      season: 'autumn',
+      tree: 'cherry',
+      locked: true,
+      mode: 'reveal',
+      ink: 'plants',
+    })
+    expect(parseShareParams(search).url).toBe(token)
+    expect(parseShareParams(search).locked).toBe(true)
   })
 })

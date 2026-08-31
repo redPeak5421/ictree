@@ -19,7 +19,18 @@ export const TREE_KINDS: readonly TreeKind[] = [
   { id: 'maple', label: 'Maple' },
 ]
 
+/** Pine stays in the type union and tests; the live picker and grove skip it. */
+export const PINE_ENABLED = false
+
 export const TREE_IDS: readonly TreeSpecies[] = TREE_KINDS.map((kind) => kind.id)
+
+export function plantableKinds(): readonly TreeKind[] {
+  return PINE_ENABLED ? TREE_KINDS : TREE_KINDS.filter((kind) => kind.id !== 'pine')
+}
+
+export function plantableSpecies(tree: TreeSpecies): TreeSpecies {
+  return !PINE_ENABLED && tree === 'pine' ? 'cherry' : tree
+}
 
 export function isTreeSpecies(value: string): value is TreeSpecies {
   return (TREE_IDS as readonly string[]).includes(value)

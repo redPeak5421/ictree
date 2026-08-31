@@ -1,26 +1,44 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useT } from '../i18n/useLocale'
 import type { ModuleGrid } from '../qr/types'
 import type { SceneColors } from '../scene/palettes'
 import { scanGrovePayload } from '../share/scanGrove'
 import { isWrapped, unwrapSecret } from '../share/secret'
+import { PasswordField } from './PasswordField'
 
 export function RevealPanel({
   grid,
   colors,
   locked,
+  shareMenu,
+  disabled,
+  onRevealed,
 }: {
   grid: ModuleGrid
   colors: SceneColors
   locked: boolean
+  shareMenu: ReactNode
+  disabled: boolean
+  onRevealed: (text: string) => void
 }) {
   const t = useT()
   const [password, setPassword] = useState('')
   const [note, setNote] = useState<string | null>(null)
-  const [revealed, setRevealed] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const requestEpoch = useRef(0)
+
+  useEffect(() => () => {
+    requestEpoch.current += 1
+  }, [])
+
+  useEffect(() => {
+    if (disabled) requestEpoch.current += 1
+  }, [disabled])
 
   const scan = async () => {
+    if (disabled || busy) return
+    const epoch = ++requestEpoch.current
+    const isCurrent = () => requestEpoch.current === epoch
     setBusy(true)
     setNote(null)
     try {
@@ -30,7 +48,7 @@ export function RevealPanel({
         return
       }
       if (!isWrapped(payload) && !locked) {
-        setRevealed(payload)
+        onRevealed(payload)
         return
       }
       if (!password) {
@@ -38,38 +56,31 @@ export function RevealPanel({
         return
       }
       const url = await unwrapSecret(isWrapped(payload) ? payload : grid.payload, password)
+      if (!isCurrent()) return
       if (!url) {
         setNote(t.wrongPassword)
         return
       }
-      setRevealed(url)
+      onRevealed(url)
     } finally {
-      setBusy(false)
+      if (isCurrent()) setBusy(false)
     }
   }
 
   return (
-    <div className="reveal-panel">
+    <>
       {locked && (
-        <input
-          className="url-field"
-          type="password"
-          autoComplete="current-password"
-          aria-label={t.unlockPassword}
-          placeholder={t.password}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
+        <div className="field-card">
+          <PasswordField value={password} onChange={setPassword} unlock />
+        </div>
       )}
-      <button type="button" className="action-btn" onClick={() => void scan()} disabled={busy}>
-        {busy ? t.scanning : t.scanGrove}
-      </button>
-      {revealed && (
-        <a className="reveal-link" href={revealed} target="_blank" rel="noopener noreferrer">
-          {revealed}
-        </a>
-      )}
-      {note && <p className="error">{note}</p>}
-    </div>
+      <div className="reveal-actions">
+        <button type="button" className="scan-btn" onClick={() => void scan()} disabled={busy || disabled}>
+          {busy ? t.scanning : t.scanGrove}
+        </button>
+        {shareMenu}
+      </div>
+      {note && <p className="error reveal-error">{note}</p>}
+    </>
   )
 }

@@ -16,9 +16,10 @@ function spinOf(x: number, y: number): number {
 }
 
 /**
- * One solid tile per dark module. Meadow tiles wear grass; canopy tiles
- * wear the tree. During the camera-led conversion they start in the crown
- * as loose, tilted blocks and settle into the flat mosaic.
+ * One solid tile per dark module. Finder corners wear the tree's ink,
+ * meadow tiles wear grass, canopy tiles wear leaves. During the camera-led
+ * conversion they start in the crown as loose, tilted blocks and settle
+ * into the flat mosaic.
  */
 export function QrTiles({ grid, scene, rig }: { grid: ModuleGrid; scene: SceneRef; rig: TreeRig }) {
   const mesh = useRef<InstancedMesh>(null)

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Group, MeshBasicMaterial, NoToneMapping } from 'three'
 import type { ModuleGrid } from '../qr/types'
-import { OrbitCamera } from './camera'
+import { claimRenderedCameraState, OrbitCamera } from './camera'
 import { Grass } from './grass'
 import { Ground } from './ground'
+import { LeafGather } from './LeafGatherView'
 import { applyDrag, applyZoom, SNAP_PITCH, TAP_SLOP, wheelZoomFactor } from './orbit'
 import { Particles } from './particles/Particles'
 import { QrTiles } from './QrTiles'
@@ -13,9 +14,10 @@ import { TreeFoliage } from './TreeFoliage'
 import { hashString } from './hash'
 import type { Season } from './palettes'
 import { buildTree, islandExtent } from './tree'
-import { resolveTreeChoice, type TreeSpecies } from './treeSpecies'
+import { plantableSpecies, resolveTreeChoice, type TreeSpecies } from './treeSpecies'
 import { OVERHEAD, blockInkOpacity, inkMixTarget, plantInkOpacity, stepInkMix, squareYaw } from './view'
 import type { InkStyle } from '../share/params'
+import type { ScanRevealState } from '../ui/scanRevealState'
 
 interface Pointer {
   id: number
@@ -66,12 +68,14 @@ function InkDissolve({
   scene,
   ink,
   reduced,
+  forcePlants,
   plants,
   tiles,
 }: {
   scene: SceneRef
   ink: InkStyle
   reduced: boolean
+  forcePlants: boolean
   plants: ReactNode
   tiles: ReactNode
 }) {
@@ -82,7 +86,7 @@ function InkDissolve({
   }, [scene])
   useFrame((_, dt) => {
     const state = scene.current
-    const target = inkMixTarget(ink === 'blocks', state.pitch)
+    const target = forcePlants ? 0 : inkMixTarget(ink === 'blocks', state.pitch)
     state.inkMix = stepInkMix(state.inkMix, target, Math.min(dt, 0.05), reduced)
     fadeGroup(plantRef.current, plantInkOpacity(state.inkMix), 0)
     fadeGroup(tileRef.current, blockInkOpacity(state.inkMix), 0)
@@ -104,6 +108,10 @@ export function TreeCanvas({
   reduced,
   rain,
   ink,
+  reveal,
+  onRevealTextReveal,
+  onRevealSettled,
+  onRevealClosed,
   onToggle,
   onOverhead,
 }: {
@@ -114,11 +122,15 @@ export function TreeCanvas({
   scene: SceneRef
   reduced: boolean
   ink: InkStyle
+  reveal: ScanRevealState | null
+  onRevealTextReveal: () => void
+  onRevealSettled: () => void
+  onRevealClosed: () => void
   onToggle: () => void
   onOverhead: (overhead: boolean) => void
 }) {
   const island = islandExtent(grid.size)
-  const choice = resolveTreeChoice(grid.payload, tree)
+  const choice = resolveTreeChoice(grid.payload, plantableSpecies(tree))
   const rig = useMemo(
     () => buildTree(grid, hashString(grid.payload), choice),
     [grid, choice.species, choice.habit],
@@ -130,6 +142,17 @@ export function TreeCanvas({
   const pinch = useRef<{ dist: number; zoom: number } | null>(null)
   const [grabbing, setGrabbing] = useState(false)
   const host = useRef<HTMLCanvasElement | null>(null)
+  const revealActive = reveal !== null
+
+  useLayoutEffect(() => {
+    if (!revealActive) return
+    pointer.current = null
+    touches.current.clear()
+    pinch.current = null
+    const state = scene.current
+    claimRenderedCameraState(state)
+    setGrabbing(false)
+  }, [revealActive, scene])
 
   // Wheel zoom must be a non-passive listener to stop the page from scrolling.
   useEffect(() => {
@@ -137,13 +160,14 @@ export function TreeCanvas({
     if (!el) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
+      if (revealActive) return
       const state = scene.current
       state.zoomTarget = null
       state.zoom = applyZoom(state.zoom, wheelZoomFactor(e.deltaY))
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [scene])
+  }, [revealActive, scene])
 
   const pinchDistance = () => {
     const [a, b] = [...touches.current.values()]
@@ -154,6 +178,7 @@ export function TreeCanvas({
   // overhead and back. Touch is the same path — the canvas has touch-action:
   // none.
   const down = (e: PointerEvent<HTMLDivElement>) => {
+    if (revealActive) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
     touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     if (touches.current.size === 2) {
@@ -178,6 +203,7 @@ export function TreeCanvas({
     }
   }
   const move = (e: PointerEvent<HTMLDivElement>) => {
+    if (revealActive) return
     if (touches.current.has(e.pointerId)) touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     const pinching = pinch.current
     if (pinching && touches.current.size >= 2) {
@@ -204,6 +230,7 @@ export function TreeCanvas({
     p.at = now
   }
   const up = (e: PointerEvent<HTMLDivElement>) => {
+    if (revealActive) return
     touches.current.delete(e.pointerId)
     if (pinch.current) {
       if (touches.current.size < 2) pinch.current = null
@@ -234,6 +261,27 @@ export function TreeCanvas({
     }
   }
 
+  const foliage = (
+    <>
+      <TreeFoliage rig={rig} scene={scene} tree={tree} season={season} shed={revealActive} />
+      {reveal && (
+        <LeafGather
+          rig={rig}
+          scene={scene}
+          tree={tree}
+          season={season}
+          text={reveal.text}
+          closing={reveal.closing}
+          reduced={reduced}
+          waitForPlants={ink === 'blocks'}
+          onTextReveal={onRevealTextReveal}
+          onSettled={onRevealSettled}
+          onClosed={onRevealClosed}
+        />
+      )}
+    </>
+  )
+
   return (
     <Canvas
       ref={host}
@@ -261,6 +309,7 @@ export function TreeCanvas({
         qrSpan={grid.size}
         crownTop={rig.crownTop}
         reduced={reduced}
+        freezeProjection={revealActive}
         onOverhead={onOverhead}
       />
       <Ground grid={grid} rig={rig} scene={scene} />
@@ -269,10 +318,11 @@ export function TreeCanvas({
           scene={scene}
           ink={ink}
           reduced={reduced}
+          forcePlants={revealActive}
           plants={
             <>
               <Grass grid={grid} scene={scene} reduced={reduced} season={season} tree={tree} />
-              <TreeFoliage rig={rig} scene={scene} tree={tree} season={season} />
+              {foliage}
             </>
           }
           tiles={<QrTiles grid={grid} scene={scene} rig={rig} />}
@@ -280,7 +330,7 @@ export function TreeCanvas({
       ) : (
         <>
           <Grass grid={grid} scene={scene} reduced={reduced} season={season} tree={tree} />
-          <TreeFoliage rig={rig} scene={scene} tree={tree} season={season} />
+          {foliage}
         </>
       )}
       <Particles grid={grid} scene={scene} reduced={reduced} species={rig.species} raining={rain} />

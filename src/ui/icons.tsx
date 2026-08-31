@@ -2,11 +2,17 @@ export function ShareIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M12 4v10M8 8l4-4 4 4M6 14v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4"
+        d="M12 5v9M9 11l3 3 3-3"
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+      <path
+        d="M6 15.5V18a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
       />
     </svg>
   )

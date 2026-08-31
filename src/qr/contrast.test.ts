@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { colorsOf, hexRgb } from '../scene/palettes'
-import { isGrassCell } from '../scene/treeSpecies'
+import { isCornerCell, isEdgeCell, isGrassCell } from '../scene/treeSpecies'
 import { encodeGrid } from './encode'
 import { lumaOfHex, moduleFillHex, moduleRgb, moduleViewHex } from './contrast'
 
@@ -48,7 +48,7 @@ describe('module mosaic colour', () => {
   it('paints meadow tiles as solid grass and canopy tiles as the tree', () => {
     const grid = encodeGrid('https://example.com/')
     const colors = colorsOf('autumn', 'maple')
-    const grass = grid.cells.find((cell) => cell.dark && isGrassCell(cell.x, cell.y, grid.size))!
+    const grass = grid.cells.find((cell) => cell.dark && isEdgeCell(cell.x, cell.y, grid.size))!
     const canopy = grid.cells.find((cell) => cell.dark && !isGrassCell(cell.x, cell.y, grid.size))!
     const grassRgb = moduleRgb(grass, colors, 1, grid.size)
     const canopyRgb = moduleRgb(canopy, colors, 1, grid.size)
@@ -57,6 +57,15 @@ describe('module mosaic colour', () => {
     )
     expect(dist(colors.foliage, canopyRgb)).toBeLessThan(dist(colors.grass, canopyRgb))
     expect(moduleFillHex(grass, colors, grid.size)).not.toBe(moduleFillHex(canopy, colors, grid.size))
+  })
+
+  it('paints finder corners in the tree family, not a second green QR', () => {
+    const grid = encodeGrid('https://example.com/')
+    const colors = colorsOf('spring', 'cherry')
+    const finder = grid.cells.find((cell) => cell.dark && isCornerCell(cell.x, cell.y, grid.size))!
+    const rgb = moduleRgb(finder, colors, 1, grid.size)
+    expect(dist(colors.finder, rgb)).toBeLessThan(dist(colors.grass, rgb))
+    expect(rgb[0]).toBeGreaterThan(rgb[1] + 8)
   })
 
   it('keeps autumn maple yellow a leaf colour on screen, not a crushed brown', () => {

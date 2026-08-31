@@ -560,15 +560,15 @@ export function barkTexture(): CanvasTexture {
   g.fillStyle = '#f0ebe3'
   g.fillRect(0, 0, width, height)
   const rng = mulberry32(hashString('bark-wash'))
-  for (let i = 0; i < 6; i++) {
-    const x0 = (i + 0.35 + rng() * 0.3) * (width / 6)
-    g.strokeStyle = `rgba(132, 108, 82, ${0.035 + rng() * 0.04})`
-    g.lineWidth = 18 + rng() * 22
+  for (let i = 0; i < 10; i++) {
+    const x0 = (i + 0.4 + rng() * 0.2) * (width / 10)
+    g.strokeStyle = `rgba(140, 118, 92, ${0.018 + rng() * 0.02})`
+    g.lineWidth = 6 + rng() * 10
     g.beginPath()
     g.moveTo(x0, 0)
     let x = x0
-    for (let y = 0; y <= height; y += 48) {
-      x += (rng() - 0.5) * 6
+    for (let y = 0; y <= height; y += 64) {
+      x += (rng() - 0.5) * 3
       g.lineTo(x, y)
     }
     g.stroke()
