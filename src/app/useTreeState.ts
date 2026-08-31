@@ -12,7 +12,7 @@ import {
 import { easeInOutCubic, isOverhead, OVERHEAD, SEASON_MS, squareYaw } from '../scene/view'
 import type { SceneState } from '../scene/sceneState'
 import { VIEW_PITCH, VIEW_YAW } from '../scene/tree'
-import type { TreeSpecies } from '../scene/treeSpecies'
+import { plantableSpecies, type TreeSpecies } from '../scene/treeSpecies'
 import { buildShareSearch, parseShareParams, type AppMode, type InkStyle, type ShareState } from '../share/params'
 import { isWrapped, wrapSecret } from '../share/secret'
 
@@ -44,7 +44,7 @@ export function useTreeState() {
   const [payload, setPayload] = useState(startPayload)
   const [locked, setLocked] = useState(startLocked)
   const [season, setSeason] = useState<Season>(initial.season)
-  const [tree, setTree] = useState<TreeSpecies>(initial.tree)
+  const [tree, setTree] = useState<TreeSpecies>(plantableSpecies(initial.tree))
   const [ink, setInk] = useState<InkStyle>(initial.ink)
   const [muted, setMuted] = useState(true)
   const [rain, setRain] = useState(false)
@@ -60,6 +60,9 @@ export function useTreeState() {
     season: initial.season,
     yaw: VIEW_YAW,
     pitch: VIEW_PITCH,
+    renderedYaw: VIEW_YAW,
+    renderedPitch: VIEW_PITCH,
+    renderedZoom: 1,
     spinYaw: 0,
     spinPitch: 0,
     dragging: false,
@@ -172,7 +175,7 @@ export function useTreeState() {
     setPassword('')
     setUrl(nextLocked ? defaultPayload() : nextPayload)
     setSeason(next.season)
-    setTree(next.tree)
+    setTree(plantableSpecies(next.tree))
     setInk(next.ink)
     const cam = scene.current
     cam.pitch = VIEW_PITCH

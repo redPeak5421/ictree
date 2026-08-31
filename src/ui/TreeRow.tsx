@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { useT } from '../i18n/useLocale'
 import { colorsOf, ornamentOf, type Season } from '../scene/palettes'
-import { TREE_KINDS, type TreeSpecies } from '../scene/treeSpecies'
+import { plantableKinds, type TreeSpecies } from '../scene/treeSpecies'
 import { LeafGlyph } from './LeafGlyph'
 
 /**
@@ -21,7 +21,7 @@ export function TreeRow({
   const t = useT()
   return (
     <div className="tree-row" role="radiogroup" aria-label={t.tree}>
-      {TREE_KINDS.map((kind) => {
+      {plantableKinds().map((kind) => {
         const selected = kind.id === tree
         const colors = colorsOf(season, kind.id)
         const style = { '--leaf': colors.foliage, '--leaf-accent': colors.accent } as CSSProperties

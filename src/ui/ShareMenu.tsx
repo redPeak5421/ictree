@@ -5,12 +5,25 @@ import { translateMessage } from '../i18n/messages'
 import type { ModuleGrid } from '../qr/types'
 import type { SceneColors } from '../scene/palettes'
 import type { SceneRef } from '../scene/sceneState'
-import { downloadLoopGif } from '../share/exportLoop'
+import { downloadLoopGif, preserveCurrentCameraAbortReason } from '../share/exportLoop'
 import { downloadQrPng } from '../share/exportPng'
 import { downloadStillPng, STILL_NO_CANVAS } from '../share/exportStill'
 import { readStillFile, STILL_ERROR } from '../share/importStill'
 import { shareUrl, type ShareState } from '../share/params'
 import { ShareIcon } from './icons'
+
+export function isShareActionCurrent(
+  actionEpoch: number,
+  currentEpoch: number,
+  disabled: boolean,
+  mounted: boolean,
+): boolean {
+  return actionEpoch === currentEpoch && !disabled && mounted
+}
+
+export function isAbortError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+}
 
 export function ShareMenu({
   state,
@@ -18,12 +31,14 @@ export function ShareMenu({
   colors,
   scene,
   onApplyStill,
+  disabled = false,
 }: {
   state: ShareState
   grid: ModuleGrid
   colors: SceneColors
   scene: SceneRef
   onApplyStill: (state: ShareState) => void
+  disabled?: boolean
 }) {
   const t = useT()
   const [open, setOpen] = useState(false)
@@ -33,6 +48,44 @@ export function ShareMenu({
   const button = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const mounted = useRef(true)
+  const disabledRef = useRef(disabled)
+  const actionEpoch = useRef(0)
+  const loopController = useRef<AbortController | null>(null)
+  const copiedTimer = useRef<number | null>(null)
+  disabledRef.current = disabled
+
+  const invalidateActions = (preserveCurrentCamera = false) => {
+    actionEpoch.current += 1
+    if (loopController.current) {
+      if (preserveCurrentCamera) {
+        loopController.current.abort(preserveCurrentCameraAbortReason())
+      } else {
+        loopController.current.abort()
+      }
+    }
+    loopController.current = null
+    if (copiedTimer.current !== null) {
+      window.clearTimeout(copiedTimer.current)
+      copiedTimer.current = null
+    }
+  }
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      invalidateActions()
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!disabled) return
+    invalidateActions(true)
+    setOpen(false)
+    setCopied(false)
+    setStillNote(null)
+  }, [disabled])
 
   useEffect(() => {
     if (!open) {
@@ -56,7 +109,7 @@ export function ShareMenu({
   }, [open])
 
   useLayoutEffect(() => {
-    if (!open) return
+    if (!open || disabled) return
     const place = () => {
       const btn = button.current
       const panel = menu.current
@@ -77,41 +130,96 @@ export function ShareMenu({
     place()
     window.addEventListener('resize', place)
     return () => window.removeEventListener('resize', place)
-  }, [open, stillNote])
+  }, [disabled, open, stillNote])
 
   const link = shareUrl(window.location.origin, window.location.pathname, state)
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(link)
-    } catch {
-      window.prompt(t.copyLinkPrompt, link)
+  const isCurrent = (epoch: number) => isShareActionCurrent(
+    epoch,
+    actionEpoch.current,
+    disabledRef.current,
+    mounted.current,
+  )
+
+  const beginAction = (controller?: AbortController) => {
+    actionEpoch.current += 1
+    loopController.current?.abort()
+    loopController.current = controller ?? null
+    if (copiedTimer.current !== null) {
+      window.clearTimeout(copiedTimer.current)
+      copiedTimer.current = null
     }
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1200)
+    return actionEpoch.current
   }
 
-  const failStill = (err: unknown) => {
+  const copy = async () => {
+    if (disabledRef.current) return
+    const epoch = beginAction()
+    try {
+      await navigator.clipboard.writeText(link)
+    } catch (err) {
+      if (!isCurrent(epoch) || isAbortError(err)) return
+      window.prompt(t.copyLinkPrompt, link)
+    }
+    if (!isCurrent(epoch)) return
+    setCopied(true)
+    copiedTimer.current = window.setTimeout(() => {
+      if (isCurrent(epoch)) setCopied(false)
+      copiedTimer.current = null
+    }, 1200)
+  }
+
+  const failStill = (err: unknown, epoch: number) => {
+    if (!isCurrent(epoch) || isAbortError(err)) return
     setStillNote(translateMessage(t, err instanceof Error ? err.message : STILL_NO_CANVAS))
   }
 
   const openStill = async (file: File | undefined) => {
     if (fileRef.current) fileRef.current.value = ''
-    if (!file) return
+    if (!file || disabledRef.current) return
+    const epoch = beginAction()
     try {
-      onApplyStill(await readStillFile(file))
+      const nextState = await readStillFile(file)
+      if (!isCurrent(epoch)) return
+      onApplyStill(nextState)
       setOpen(false)
     } catch (err) {
+      if (!isCurrent(epoch) || isAbortError(err)) return
       setStillNote(translateMessage(t, err instanceof Error ? err.message : STILL_ERROR))
       setOpen(true)
     }
   }
 
-  const panel = open ? (
+  const saveStill = async () => {
+    if (disabledRef.current) return
+    const epoch = beginAction()
+    try {
+      await downloadStillPng(state)
+      if (isCurrent(epoch)) setOpen(false)
+    } catch (err) {
+      failStill(err, epoch)
+    }
+  }
+
+  const saveLoop = async () => {
+    if (disabledRef.current) return
+    const controller = new AbortController()
+    const epoch = beginAction(controller)
+    try {
+      await downloadLoopGif(state, scene, controller.signal)
+      if (isCurrent(epoch)) setOpen(false)
+    } catch (err) {
+      failStill(err, epoch)
+    } finally {
+      if (loopController.current === controller) loopController.current = null
+    }
+  }
+
+  const panel = open && !disabled ? (
     <div className="share-menu" role="menu" ref={menu}>
       <div className="share-group" role="group" aria-label={t.shareGroup}>
         <p className="share-group-title">{t.shareGroup}</p>
-        <button type="button" role="menuitem" onClick={() => void copy()}>
+        <button type="button" role="menuitem" disabled={disabled} onClick={() => void copy()}>
           {copied ? t.copied : t.copyLink}
         </button>
         <a
@@ -144,7 +252,9 @@ export function ShareMenu({
         <button
           type="button"
           role="menuitem"
+          disabled={disabled}
           onClick={() => {
+            if (disabledRef.current) return
             downloadQrPng(grid, colors)
             setOpen(false)
           }}
@@ -154,25 +264,30 @@ export function ShareMenu({
         <button
           type="button"
           role="menuitem"
-          onClick={() => {
-            void downloadStillPng(state).then(() => setOpen(false)).catch(failStill)
-          }}
+          disabled={disabled}
+          onClick={() => void saveStill()}
         >
           {t.saveStill}
         </button>
         <button
           type="button"
           role="menuitem"
-          onClick={() => {
-            void downloadLoopGif(state, scene).then(() => setOpen(false)).catch(failStill)
-          }}
+          disabled={disabled}
+          onClick={() => void saveLoop()}
         >
           {t.saveLoop}
         </button>
       </div>
       <div className="share-group" role="group" aria-label={t.importGroup}>
         <p className="share-group-title">{t.importGroup}</p>
-        <button type="button" role="menuitem" onClick={() => fileRef.current?.click()}>
+        <button
+          type="button"
+          role="menuitem"
+          disabled={disabled}
+          onClick={() => {
+            if (!disabledRef.current) fileRef.current?.click()
+          }}
+        >
           {t.openStill}
         </button>
       </div>
@@ -187,9 +302,12 @@ export function ShareMenu({
         type="button"
         className="share-btn"
         aria-haspopup="menu"
-        aria-expanded={open}
+        aria-expanded={open && !disabled}
         aria-label={t.share}
-        onClick={() => setOpen((value) => !value)}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabledRef.current) setOpen((value) => !value)
+        }}
       >
         <ShareIcon />
       </button>
@@ -198,6 +316,7 @@ export function ShareMenu({
         type="file"
         accept="image/gif,image/png,image/jpeg,image/webp"
         hidden
+        disabled={disabled}
         onChange={(event) => void openStill(event.target.files?.[0])}
       />
       {panel && createPortal(panel, document.body)}

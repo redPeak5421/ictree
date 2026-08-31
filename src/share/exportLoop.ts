@@ -12,15 +12,55 @@ export const LOOP_DELAY_MS = 180
 export const LOOP_MAX_SIDE = 640
 export const LOOP_FILENAME = 'grove-loop.gif'
 
-function nextFrame(): Promise<void> {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => resolve())
+const PRESERVE_CURRENT_CAMERA = Symbol('preserve-current-camera')
+
+interface PreserveCurrentCameraAbort extends Error {
+  [PRESERVE_CURRENT_CAMERA]: true
+}
+
+export function preserveCurrentCameraAbortReason(): PreserveCurrentCameraAbort {
+  const reason = new Error('Loop capture was aborted after the camera changed ownership.')
+  reason.name = 'AbortError'
+  return Object.assign(reason, { [PRESERVE_CURRENT_CAMERA]: true as const })
+}
+
+function preservesCurrentCamera(signal?: AbortSignal): boolean {
+  const reason = signal?.reason as Partial<PreserveCurrentCameraAbort> | undefined
+  return signal?.aborted === true && reason?.[PRESERVE_CURRENT_CAMERA] === true
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new DOMException('The operation was aborted.', 'AbortError')
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw abortReason(signal)
+}
+
+function nextFrame(signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(abortReason(signal))
+      return
+    }
+    let frame = 0
+    const cleanup = () => signal?.removeEventListener('abort', onAbort)
+    const onAbort = () => {
+      cancelAnimationFrame(frame)
+      cleanup()
+      reject(abortReason(signal!))
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
+    frame = requestAnimationFrame(() => {
+      cleanup()
+      resolve()
+    })
   })
 }
 
-async function twoFrames() {
-  await nextFrame()
-  await nextFrame()
+async function twoFrames(signal?: AbortSignal) {
+  await nextFrame(signal)
+  await nextFrame(signal)
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -32,7 +72,12 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(href)
 }
 
-export async function downloadLoopGif(state: ShareState, scene: SceneRef): Promise<void> {
+export async function downloadLoopGif(
+  state: ShareState,
+  scene: SceneRef,
+  signal?: AbortSignal,
+): Promise<void> {
+  throwIfAborted(signal)
   const search = buildShareSearch(state)
   const src = document.querySelector('[data-grove-canvas]') as HTMLCanvasElement | null
   if (!src) throw new Error(STILL_NO_CANVAS)
@@ -45,19 +90,36 @@ export async function downloadLoopGif(state: ShareState, scene: SceneRef): Promi
     spinYaw: cam.spinYaw,
     spinPitch: cam.spinPitch,
   }
-  const pitch =
-    isOverhead(cam.pitch) || cam.pitch >= SNAP_PITCH || cam.pitchTarget === OVERHEAD ? VIEW_PITCH : cam.pitch
-  cam.pitchTarget = null
-  cam.yawTarget = null
-  cam.spinYaw = 0
-  cam.spinPitch = 0
+  let cameraFinalized = false
+  const finalizeCamera = () => {
+    if (cameraFinalized) return
+    cameraFinalized = true
+    if (preservesCurrentCamera(signal)) return
+    cam.yaw = backup.yaw
+    cam.pitch = backup.pitch
+    cam.pitchTarget = backup.pitchTarget
+    cam.yawTarget = backup.yawTarget
+    cam.spinYaw = backup.spinYaw
+    cam.spinPitch = backup.spinPitch
+  }
+  const onAbort = () => finalizeCamera()
+  signal?.addEventListener('abort', onAbort, { once: true })
   const frames: { data: Uint8ClampedArray; width: number; height: number }[] = []
   try {
+    throwIfAborted(signal)
+    const pitch =
+      isOverhead(cam.pitch) || cam.pitch >= SNAP_PITCH || cam.pitchTarget === OVERHEAD ? VIEW_PITCH : cam.pitch
+    cam.pitchTarget = null
+    cam.yawTarget = null
+    cam.spinYaw = 0
+    cam.spinPitch = 0
     const baseYaw = cam.yaw
     for (let i = 0; i < LOOP_FRAMES; i++) {
+      throwIfAborted(signal)
       cam.yaw = baseYaw + (i / LOOP_FRAMES) * Math.PI * 2
       cam.pitch = pitch === OVERHEAD ? VIEW_PITCH : pitch
-      await twoFrames()
+      await twoFrames(signal)
+      throwIfAborted(signal)
       const w = src.width
       const h = src.height
       const scale = Math.max(w, h) > LOOP_MAX_SIDE ? LOOP_MAX_SIDE / Math.max(w, h) : 1
@@ -74,16 +136,14 @@ export async function downloadLoopGif(state: ShareState, scene: SceneRef): Promi
       frames.push({ data: new Uint8ClampedArray(image.data), width, height })
     }
   } finally {
-    cam.yaw = backup.yaw
-    cam.pitch = backup.pitch
-    cam.pitchTarget = backup.pitchTarget
-    cam.yawTarget = backup.yawTarget
-    cam.spinYaw = backup.spinYaw
-    cam.spinPitch = backup.spinPitch
+    signal?.removeEventListener('abort', onAbort)
+    finalizeCamera()
   }
 
+  throwIfAborted(signal)
   const gif = GIFEncoder()
   for (let i = 0; i < frames.length; i++) {
+    throwIfAborted(signal)
     const frame = frames[i]!
     const palette = quantize(frame.data, 256, { format: 'rgb565' })
     const index = applyPalette(frame.data, palette)
@@ -94,6 +154,7 @@ export async function downloadLoopGif(state: ShareState, scene: SceneRef): Promi
     })
   }
   gif.finish()
+  throwIfAborted(signal)
   const bytes = injectGifComment(gif.bytes(), search)
   downloadBlob(new Blob([Uint8Array.from(bytes)], { type: 'image/gif' }), LOOP_FILENAME)
 }

@@ -5,12 +5,69 @@ import { clampZoom, stepSpin } from './orbit'
 import type { SceneRef } from './sceneState'
 import { cameraPose, glideAngle, isOverhead, squareYaw, OVERHEAD } from './view'
 
+export interface ProjectionAspectSelection {
+  aspect: number
+  frozenAspect: number | null
+}
+
+export interface ClaimableCameraState {
+  yaw: number
+  pitch: number
+  zoom: number
+  renderedYaw: number
+  renderedPitch: number
+  renderedZoom: number
+  spinYaw: number
+  spinPitch: number
+  dragging: boolean
+  pitchTarget: number | null
+  yawTarget: number | null
+  zoomTarget: number | null
+}
+
+/** Gives Reveal the last pose actually applied to the camera and stops motion. */
+export function claimRenderedCameraState(state: ClaimableCameraState): void {
+  const yaw = Number.isFinite(state.renderedYaw)
+    ? state.renderedYaw
+    : Number.isFinite(state.yaw) ? state.yaw : 0
+  const pitch = Number.isFinite(state.renderedPitch)
+    ? state.renderedPitch
+    : Number.isFinite(state.pitch) ? state.pitch : 0
+  const zoom = Number.isFinite(state.renderedZoom) && state.renderedZoom > 0
+    ? state.renderedZoom
+    : Number.isFinite(state.zoom) && state.zoom > 0 ? state.zoom : 1
+  state.yaw = state.renderedYaw = yaw
+  state.pitch = state.renderedPitch = pitch
+  state.zoom = state.renderedZoom = zoom
+  state.spinYaw = 0
+  state.spinPitch = 0
+  state.dragging = false
+  state.pitchTarget = null
+  state.yawTarget = null
+  state.zoomTarget = null
+}
+
+/** Selects the live CSS aspect or retains the snapshot captured on freeze. */
+export function selectProjectionAspect(
+  liveAspect: number,
+  freezeProjection: boolean,
+  frozenAspect: number | null,
+): ProjectionAspectSelection {
+  const safeLiveAspect = Number.isFinite(liveAspect) && liveAspect > 0 ? liveAspect : 1
+  if (!freezeProjection) return { aspect: safeLiveAspect, frozenAspect: null }
+  const snapshot = frozenAspect !== null && Number.isFinite(frozenAspect) && frozenAspect > 0
+    ? frozenAspect
+    : safeLiveAspect
+  return { aspect: snapshot, frozenAspect: snapshot }
+}
+
 export function OrbitCamera({
   scene,
   island,
   qrSpan,
   crownTop,
   reduced,
+  freezeProjection = false,
   onOverhead,
 }: {
   scene: SceneRef
@@ -18,11 +75,13 @@ export function OrbitCamera({
   qrSpan: number
   crownTop: number
   reduced: boolean
+  freezeProjection?: boolean
   /** Called when the view arrives at, or leaves, straight down. */
   onOverhead: (overhead: boolean) => void
 }) {
   const { camera, size } = useThree()
   const wasOverhead = useRef<boolean | null>(null)
+  const frozenAspect = useRef<number | null>(null)
 
   useEffect(() => {
     wasOverhead.current = null
@@ -80,7 +139,13 @@ export function OrbitCamera({
     camera.up.set(pose.up[0], pose.up[1], pose.up[2]).normalize()
     camera.lookAt(pose.target[0], pose.target[1], pose.target[2])
     if (!(camera instanceof OrthographicCamera)) return
-    const aspect = size.width / Math.max(1, size.height)
+    const projection = selectProjectionAspect(
+      size.width / Math.max(1, size.height),
+      freezeProjection,
+      frozenAspect.current,
+    )
+    frozenAspect.current = projection.frozenAspect
+    const aspect = projection.aspect
     // Whichever axis is tighter wins, so a portrait viewport fills its width
     // instead of shrinking the scene to fit a square.
     const halfY = Math.max(pose.spanY / 2, pose.spanX / 2 / aspect) / state.zoom
@@ -91,6 +156,9 @@ export function OrbitCamera({
     camera.near = 0.1
     camera.far = island * 12
     camera.updateProjectionMatrix()
+    state.renderedYaw = state.yaw
+    state.renderedPitch = state.pitch
+    state.renderedZoom = state.zoom
   })
 
   return null

@@ -1,32 +1,40 @@
-export const SECRET_PREFIX = 'gv1.'
+export const SECRET_PREFIX = 'gv2.'
 export const WRAP_TOO_LONG = 'Password-protected URL is too long'
+/** Locked groves stay at or under QR version 10 (ECC M, byte mode). */
+export const MAX_WRAP_VERSION = 10
+const MAX_TOKEN_BYTES = 213
 
 const SALT_LEN = 16
 const IV_LEN = 12
 const ITERATIONS = 120000
-const MAX_WRAPPED = 280
 
-function bytesToB64(bytes: Uint8Array): string {
-  let bin = ''
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!)
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+function bytesToLatin1(bytes: Uint8Array): string {
+  let out = ''
+  for (let i = 0; i < bytes.length; i++) out += String.fromCharCode(bytes[i]!)
+  return out
 }
 
-function b64ToBytes(text: string): Uint8Array | null {
-  const padded = text.replace(/-/g, '+').replace(/_/g, '/')
-  const pad = padded.length % 4 === 0 ? '' : '='.repeat(4 - (padded.length % 4))
-  try {
-    const bin = atob(padded + pad)
-    const out = new Uint8Array(bin.length)
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
-    return out
-  } catch {
-    return null
-  }
+function latin1ToBytes(text: string): Uint8Array {
+  const out = new Uint8Array(text.length)
+  for (let i = 0; i < text.length; i++) out[i] = text.charCodeAt(i) & 0xff
+  return out
 }
 
 export function isWrapped(payload: string): boolean {
   return payload.startsWith(SECRET_PREFIX)
+}
+
+export function wrappedQrData(payload: string): number[] {
+  const bytes = new Array<number>(payload.length)
+  for (let i = 0; i < payload.length; i++) bytes[i] = payload.charCodeAt(i) & 0xff
+  return bytes
+}
+
+export function tokenFromQrBytes(bytes: readonly number[]): string | null {
+  if (bytes.length < SECRET_PREFIX.length) return null
+  let token = ''
+  for (const byte of bytes) token += String.fromCharCode(byte)
+  return isWrapped(token) ? token : null
 }
 
 async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
@@ -53,15 +61,14 @@ export async function wrapSecret(url: string, password: string): Promise<string>
   packed.set(salt, 0)
   packed.set(iv, SALT_LEN)
   packed.set(cipher, SALT_LEN + IV_LEN)
-  const token = `${SECRET_PREFIX}${bytesToB64(packed)}`
-  if (token.length > MAX_WRAPPED) throw new Error(WRAP_TOO_LONG)
-  return token
+  if (SECRET_PREFIX.length + packed.length > MAX_TOKEN_BYTES) throw new Error(WRAP_TOO_LONG)
+  return SECRET_PREFIX + bytesToLatin1(packed)
 }
 
 export async function unwrapSecret(token: string, password: string): Promise<string | null> {
   if (!isWrapped(token) || !password) return null
-  const packed = b64ToBytes(token.slice(SECRET_PREFIX.length))
-  if (!packed || packed.length < SALT_LEN + IV_LEN + 16) return null
+  const packed = latin1ToBytes(token.slice(SECRET_PREFIX.length))
+  if (packed.length < SALT_LEN + IV_LEN + 16) return null
   const salt = packed.subarray(0, SALT_LEN)
   const iv = packed.subarray(SALT_LEN, SALT_LEN + IV_LEN)
   const cipher = packed.subarray(SALT_LEN + IV_LEN)
