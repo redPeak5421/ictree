@@ -13,6 +13,7 @@ import { grassTones, groundCoverOf, mixHex, type SceneColors, type Season } from
 import type { SceneRef } from './sceneState'
 import type { TreeSpecies } from './treeSpecies'
 import { plantInkOpacity, sceneryOpacity } from './view'
+import { windBend } from './wind'
 
 function vegetationColor(form: VegetationForm, tone: number, colors: SceneColors): string {
   const meadow = grassTones(colors)
@@ -58,7 +59,8 @@ function SceneryGroup({
     const swayScale = form === 'broad' ? 0.05 : form === 'seed' ? 0.13 : 0.1
     items.forEach((item, index) => {
       const gust = item.gust ?? (item.region === 'rim' ? 1.3 : 1)
-      const sway = reduced ? 0 : Math.sin(t * 1.55 + item.phase) * swayScale * gust
+      const bend = reduced ? 0 : windBend(t, item.root[0], item.root[2]).tilt
+      const sway = reduced ? 0 : Math.sin(t * 1.55 + item.phase) * swayScale * gust + bend * 0.75 * gust
       const lean = item.lean + sway
       const ux = Math.sin(lean) * Math.sin(item.heading)
       const uy = Math.cos(lean)

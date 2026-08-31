@@ -12,11 +12,9 @@ import {
 import { hashString, mulberry32 } from './hash'
 import { fitScale, halfExtents, qrSlots, type Bounds, type LeafShape } from './leafShape'
 import {
-  CORNER_MODULES,
   canopyShapeFor,
   crownLayout,
   fillerShapeFor,
-  isCornerCell,
   isGrassCell,
   profileFor,
   type CrownLayer,
@@ -116,13 +114,6 @@ export const SEAM_OVERLAP = 0.4
 /** Cylinders are stretched by this so joints between segments do not gap. */
 export const BRANCH_OVERLAP = 1.08
 
-/**
- * Modules this close to a corner belong to the grass, not the tree: the three
- * finder patterns plus their separators, and the matching block at the fourth
- * corner. In the reference the code's corners are grass-coloured because the
- * island's corners are where the grass grows.
- */
-export const CORNER = CORNER_MODULES
 
 /** Default camera azimuth, before the island is turned by hand. */
 export const VIEW_YAW = Math.PI / 4
@@ -152,10 +143,6 @@ export const REACH = 1.6
 
 export function islandExtent(gridSize: number): number {
   return gridSize + ISLAND_RIM * 2
-}
-
-export function isCornerModule(x: number, y: number, size: number): boolean {
-  return isCornerCell(x, y, size)
 }
 
 export function isGrassModule(x: number, y: number, size: number): boolean {

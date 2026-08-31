@@ -1,8 +1,10 @@
+import { colorsOf } from '../scene/palettes'
 import { appendPngTrailer, insertPngChunksAfterIhdr, PNG_CHUNK_TYPE, textGroveData } from './containerMeta'
 import { buildShareSearch, type ShareState } from './params'
+import { compositeSiteQr, siteQrPayload } from './siteQr'
 import { frameStillPayload } from './stillEncode'
 
-export const STILL_FILENAME = 'grove-still.png'
+const STILL_FILENAME = 'grove-still.png'
 export const STILL_NO_CANVAS = 'Need WebGL to save a still.'
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -32,6 +34,9 @@ export async function downloadStillPng(state: ShareState): Promise<void> {
   const ctx = out.getContext('2d')
   if (!ctx) throw new Error(STILL_NO_CANVAS)
   ctx.drawImage(src, 0, 0)
+  const image = ctx.getImageData(0, 0, out.width, out.height)
+  compositeSiteQr(image, colorsOf(state.season, state.tree), siteQrPayload())
+  ctx.putImageData(image, 0, 0)
   const blob = await new Promise<Blob | null>((resolve) => out.toBlob(resolve, 'image/png'))
   if (!blob) throw new Error(STILL_NO_CANVAS)
   const bytes = new Uint8Array(await blob.arrayBuffer())

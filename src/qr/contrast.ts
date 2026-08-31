@@ -24,7 +24,7 @@ function setLuma(rgb: [number, number, number], target: number): [number, number
   return [Math.min(255, rgb[0] * s), Math.min(255, rgb[1] * s), Math.min(255, rgb[2] * s)]
 }
 
-export const CREAM = '#f2efe6'
+const CREAM = '#f2efe6'
 
 /**
  * Reserved for the tree's own ink samples. The 3D mosaic no longer crushes
@@ -47,14 +47,6 @@ export function toLumaHex(hex: string, target: number): string {
 
 function bucketOf(cell: ModuleCell): number {
   return ((cell.x * 73856093 + cell.y * 19349663) >>> 5) % 4
-}
-
-export function moduleToneIndex(cell: ModuleCell): number {
-  return (bucketOf(cell) + 2) % 4
-}
-
-export function moduleStoneToneIndex(cell: ModuleCell): number {
-  return bucketOf(cell)
 }
 
 export function moduleInkLuma(cell: ModuleCell): number {
@@ -121,7 +113,3 @@ export function moduleRgb(
   ]
 }
 
-export function moduleHex(cell: ModuleCell, colors: SceneColors, morphT: number, size: number): string {
-  const [r, g, b] = moduleRgb(cell, colors, morphT, size)
-  return rgbHex(r, g, b)
-}

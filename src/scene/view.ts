@@ -10,15 +10,26 @@ export function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
 }
 
-export function smoothstep(edge0: number, edge1: number, x: number): number {
+/** Quadratic ease-in-out: constant +a then −a. Slow, fast, slow. */
+function easeInOutQuad(t: number): number {
+  const x = t < 0 ? 0 : t > 1 ? 1 : t
+  return x < 0.5 ? 2 * x * x : 1 - ((-2 * x + 2) ** 2) / 2
+}
+
+export interface AngleGlide {
+  from: number
+  to: number
+  elapsed: number
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)))
   return t * t * (3 - 2 * t)
 }
 
 /**
- * Weather (rain, petals, falling leaves) is not part of the code. It thins
- * out on the way to overhead so the scan is not a snow of particles. Grass,
- * leaves and the lawn stay put — the QR is formed by the camera angle.
+ * Weather (rain, petals, falling leaves) thins out on the way to overhead
+ * so the scan is not a snow of particles.
  */
 export function sceneryOpacity(pitch: number): number {
   return 1 - smoothstep(1.2, 1.48, pitch)
@@ -30,7 +41,7 @@ export function sceneryOpacity(pitch: number): number {
  * mosaic grows as the camera goes overhead. The band covers most of the
  * 900ms glide so leaves have time to settle into tiles.
  */
-export const INK_FADE_RATE = 8
+const INK_FADE_RATE = 8
 
 export function inkMixTarget(blocks: boolean, pitch: number): number {
   if (!blocks) return 0
@@ -57,7 +68,7 @@ export function isOverhead(pitch: number): boolean {
   return pitch >= OVERHEAD - 1e-3
 }
 
-export interface CameraPose {
+interface CameraPose {
   position: [number, number, number]
   target: [number, number, number]
   up: [number, number, number]
@@ -86,40 +97,45 @@ export function cameraPose(
   const cosE = Math.cos(pitch)
   const sinY = Math.sin(yaw)
   const cosY = Math.cos(yaw)
-  // Half-extent of the island square along either screen axis at this heading.
-  const hx = (island / 2) * (Math.abs(cosY) + Math.abs(sinY))
-  // Overhead, a decoder wants two clear modules around the code.
+  const hx = (island / 2) * Math.SQRT2
   const halfW = Math.max(hx, (qrSpan + 4) / 2)
-  // On screen a point's height is y*cos(elev) + depth*sin(elev). The slab's
-  // near edge and underside set the bottom; the crown apex above the trunk
-  // plus a modest foliage radius set the top. A wide crown ellipsoid used
-  // to sit the look-at above the island, so the grove hugged the bottom.
-  const bottom = -halfW * sinE - SLAB_H * cosE
-  const apex = crownTop * cosE
-  const foliageR = island * 0.32
-  const top = Math.max(apex + foliageR * sinE, halfW * sinE)
-  // Screen-up in world space is exactly perpendicular to the view direction,
-  // so lookAt keeps it and the view stays continuous through straight down.
+  // Frame and look-at are pitch-invariant: fitting the changing silhouette
+  // used to zoom out then in, which read as backing away then approaching.
+  const sinSide = Math.sin(VIEW_PITCH)
+  const cosSide = Math.cos(VIEW_PITCH)
+  const bottom = -halfW * sinSide - SLAB_H * cosSide
+  const apex = crownTop * cosSide
+  const mid = (Math.max(apex, halfW * sinSide) + bottom) / 2
+  const lookY = mid / cosSide
   const up: [number, number, number] = [-sinE * sinY, cosE, -sinE * cosY]
-  const mid = (Math.max(apex, halfW * sinE) + bottom) / 2
-  const target: [number, number, number] = [up[0] * mid, up[1] * mid, up[2] * mid]
+  const target: [number, number, number] = [0, lookY, 0]
   const dist = island * 2.3
+  const span = 2 * halfW * MARGIN
   return {
     position: [target[0] + dist * cosE * sinY, target[1] + dist * sinE, target[2] + dist * cosE * cosY],
     target,
     up,
-    spanX: 2 * halfW * MARGIN,
-    spanY: 2 * Math.max(top - mid, mid - bottom) * MARGIN,
+    spanX: span,
+    spanY: span,
   }
 }
 
 /**
  * Glide an angle toward a target after a tap or a near-overhead release.
- * Returns true once it has arrived (and been pinned exactly).
+ * Duration is VIEW_MS; the curve is ease-in-out with uniform accel/decel.
+ * Returns the next value and whether it has arrived (pinned exactly).
  */
-export function glideAngle(current: number, target: number, dt: number): [number, boolean] {
-  const next = current + (target - current) * (1 - Math.exp(-dt * 7))
-  if (Math.abs(target - next) < 2e-3) return [target, true]
+export function stepAngleGlide(glide: AngleGlide, dt: number, duration = VIEW_MS / 1000): [number, boolean] {
+  const span = glide.to - glide.from
+  if (!Number.isFinite(span) || Math.abs(span) < 2e-3) {
+    glide.elapsed = duration
+    return [glide.to, true]
+  }
+  const step = Number.isFinite(dt) && dt > 0 ? dt : 0
+  glide.elapsed += step
+  const u = duration <= 0 ? 1 : Math.min(1, glide.elapsed / duration)
+  const next = glide.from + span * easeInOutQuad(u)
+  if (u >= 1) return [glide.to, true]
   return [next, false]
 }
 
@@ -133,4 +149,3 @@ export function squareYaw(yaw: number): number {
   return Math.round(yaw / quarter) * quarter
 }
 
-export { VIEW_PITCH }

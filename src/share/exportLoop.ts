@@ -1,16 +1,18 @@
 import { applyPalette, GIFEncoder, quantize } from 'gifenc'
 import { SNAP_PITCH } from '../scene/orbit'
+import { colorsOf } from '../scene/palettes'
 import type { SceneRef } from '../scene/sceneState'
 import { VIEW_PITCH } from '../scene/tree'
 import { isOverhead, OVERHEAD } from '../scene/view'
 import { injectGifComment } from './containerMeta'
 import { STILL_NO_CANVAS } from './exportStill'
 import { buildShareSearch, type ShareState } from './params'
+import { blitSiteQr, rasterSiteQr, siteQrPayload } from './siteQr'
 
 export const LOOP_FRAMES = 20
 export const LOOP_DELAY_MS = 180
-export const LOOP_MAX_SIDE = 640
-export const LOOP_FILENAME = 'grove-loop.gif'
+const LOOP_MAX_SIDE = 640
+const LOOP_FILENAME = 'grove-loop.gif'
 
 const PRESERVE_CURRENT_CAMERA = Symbol('preserve-current-camera')
 
@@ -79,6 +81,8 @@ export async function downloadLoopGif(
 ): Promise<void> {
   throwIfAborted(signal)
   const search = buildShareSearch(state)
+  const colors = colorsOf(state.season, state.tree)
+  const site = siteQrPayload()
   const src = document.querySelector('[data-grove-canvas]') as HTMLCanvasElement | null
   if (!src) throw new Error(STILL_NO_CANVAS)
   const cam = scene.current
@@ -114,17 +118,18 @@ export async function downloadLoopGif(
     cam.spinYaw = 0
     cam.spinPitch = 0
     const baseYaw = cam.yaw
+    const w = src.width
+    const h = src.height
+    const scale = Math.max(w, h) > LOOP_MAX_SIDE ? LOOP_MAX_SIDE / Math.max(w, h) : 1
+    const width = Math.max(1, Math.round(w * scale))
+    const height = Math.max(1, Math.round(h * scale))
+    const patch = rasterSiteQr(colors, site, width, height)
     for (let i = 0; i < LOOP_FRAMES; i++) {
       throwIfAborted(signal)
       cam.yaw = baseYaw + (i / LOOP_FRAMES) * Math.PI * 2
-      cam.pitch = pitch === OVERHEAD ? VIEW_PITCH : pitch
+      cam.pitch = pitch
       await twoFrames(signal)
       throwIfAborted(signal)
-      const w = src.width
-      const h = src.height
-      const scale = Math.max(w, h) > LOOP_MAX_SIDE ? LOOP_MAX_SIDE / Math.max(w, h) : 1
-      const width = Math.max(1, Math.round(w * scale))
-      const height = Math.max(1, Math.round(h * scale))
       const off = document.createElement('canvas')
       off.width = width
       off.height = height
@@ -133,6 +138,7 @@ export async function downloadLoopGif(
       ctx.imageSmoothingEnabled = scale < 1
       ctx.drawImage(src, 0, 0, width, height)
       const image = ctx.getImageData(0, 0, width, height)
+      blitSiteQr(image, patch)
       frames.push({ data: new Uint8ClampedArray(image.data), width, height })
     }
   } finally {

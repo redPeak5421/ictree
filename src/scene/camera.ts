@@ -3,14 +3,14 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { OrthographicCamera } from 'three'
 import { clampZoom, stepSpin } from './orbit'
 import type { SceneRef } from './sceneState'
-import { cameraPose, glideAngle, isOverhead, squareYaw, OVERHEAD } from './view'
+import { cameraPose, isOverhead, squareYaw, stepAngleGlide, OVERHEAD, type AngleGlide } from './view'
 
-export interface ProjectionAspectSelection {
+interface ProjectionAspectSelection {
   aspect: number
   frozenAspect: number | null
 }
 
-export interface ClaimableCameraState {
+interface ClaimableCameraState {
   yaw: number
   pitch: number
   zoom: number
@@ -82,6 +82,9 @@ export function OrbitCamera({
   const { camera, size } = useThree()
   const wasOverhead = useRef<boolean | null>(null)
   const frozenAspect = useRef<number | null>(null)
+  const pitchGlide = useRef<AngleGlide | null>(null)
+  const yawGlide = useRef<AngleGlide | null>(null)
+  const zoomGlide = useRef<AngleGlide | null>(null)
 
   useEffect(() => {
     wasOverhead.current = null
@@ -93,9 +96,17 @@ export function OrbitCamera({
     if (!state.dragging) {
       if (state.pitchTarget !== null) {
         state.spinPitch = 0
-        const [pitch, done] = glideAngle(state.pitch, state.pitchTarget, reduced ? 1e9 : step)
+        if (!pitchGlide.current || pitchGlide.current.to !== state.pitchTarget) {
+          pitchGlide.current = { from: state.pitch, to: state.pitchTarget, elapsed: 0 }
+        }
+        const [pitch, done] = stepAngleGlide(pitchGlide.current, reduced ? 1e9 : step)
         state.pitch = pitch
-        if (done) state.pitchTarget = null
+        if (done) {
+          state.pitchTarget = null
+          pitchGlide.current = null
+        }
+      } else {
+        pitchGlide.current = null
       }
       // However it got there — a flick that ran out at the top included — the
       // overhead view squares the code up on screen.
@@ -110,9 +121,17 @@ export function OrbitCamera({
       }
       if (state.yawTarget !== null) {
         state.spinYaw = 0
-        const [yaw, done] = glideAngle(state.yaw, state.yawTarget, reduced ? 1e9 : step)
+        if (!yawGlide.current || yawGlide.current.to !== state.yawTarget) {
+          yawGlide.current = { from: state.yaw, to: state.yawTarget, elapsed: 0 }
+        }
+        const [yaw, done] = stepAngleGlide(yawGlide.current, reduced ? 1e9 : step)
         state.yaw = yaw
-        if (done) state.yawTarget = null
+        if (done) {
+          state.yawTarget = null
+          yawGlide.current = null
+        }
+      } else {
+        yawGlide.current = null
       }
       // A flick keeps the island turning after the finger lifts.
       if (reduced) {
@@ -121,13 +140,24 @@ export function OrbitCamera({
       } else {
         stepSpin(state, step)
       }
+    } else {
+      pitchGlide.current = null
+      yawGlide.current = null
     }
     // The code is read at fit-to-frame: heading overhead lets the zoom go.
     if (state.pitchTarget === OVERHEAD && state.zoom !== 1) state.zoomTarget = 1
     if (state.zoomTarget !== null) {
-      const [zoom, done] = glideAngle(state.zoom, state.zoomTarget, reduced ? 1e9 : step)
+      if (!zoomGlide.current || zoomGlide.current.to !== state.zoomTarget) {
+        zoomGlide.current = { from: state.zoom, to: state.zoomTarget, elapsed: 0 }
+      }
+      const [zoom, done] = stepAngleGlide(zoomGlide.current, reduced ? 1e9 : step)
       state.zoom = clampZoom(zoom)
-      if (done) state.zoomTarget = null
+      if (done) {
+        state.zoomTarget = null
+        zoomGlide.current = null
+      }
+    } else {
+      zoomGlide.current = null
     }
     const overhead = isOverhead(state.pitch)
     if (overhead !== wasOverhead.current) {

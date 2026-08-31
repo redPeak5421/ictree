@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockInkOpacity, cameraPose, glideAngle, inkMixTarget, isOverhead, OVERHEAD, plantInkOpacity, sceneryOpacity, squareYaw, stepInkMix } from './view'
+import { blockInkOpacity, cameraPose, inkMixTarget, isOverhead, OVERHEAD, plantInkOpacity, sceneryOpacity, squareYaw, stepAngleGlide, stepInkMix, VIEW_MS } from './view'
 import { VIEW_PITCH, VIEW_YAW } from './tree'
 
 const dot = (a: number[], b: number[]) => a[0]! * b[0]! + a[1]! * b[1]! + a[2]! * b[2]!
@@ -21,10 +21,9 @@ describe('cameraPose', () => {
       expect(Math.abs(pose.position[0] - pose.target[0])).toBeLessThan(1e-9)
       expect(Math.abs(pose.position[2] - pose.target[2])).toBeLessThan(1e-9)
       expect(pose.position[1]).toBeGreaterThan(pose.target[1])
-      // The island centre stays in the middle of the frame. A look-at above
-      // the paving used to shove the code onto the bottom edge.
+      // Ortho top-down: the island's XZ centre is the frame centre. Look-at
+      // height is shared with the side view so pitching does not dolly.
       expect(pose.target[0]).toBeCloseTo(0, 6)
-      expect(pose.target[1]).toBeCloseTo(0, 6)
       expect(pose.target[2]).toBeCloseTo(0, 6)
       // Quiet zone: at least two modules of margin around the code.
       expect(pose.spanX).toBeGreaterThanOrEqual(36)
@@ -53,6 +52,35 @@ describe('cameraPose', () => {
     // Up high the vertical span is dominated by depth, so it stays comparable
     // rather than collapsing with cos(pitch).
     expect(high.spanY).toBeGreaterThan(low.spanY * 0.8)
+  })
+
+  it('keeps the look-at on the island axis at every heading so the grove does not orbit the screen', () => {
+    for (const yaw of [0, 0.4, VIEW_YAW, 1.1, Math.PI / 2]) {
+      const pose = cameraPose(yaw, VIEW_PITCH, 32, 30, 20)
+      expect(pose.target[0]).toBeCloseTo(0, 6)
+      expect(pose.target[2]).toBeCloseTo(0, 6)
+    }
+  })
+
+  it('does not resize the frame as the island turns', () => {
+    const east = cameraPose(0, VIEW_PITCH, 32, 30, 20)
+    const iso = cameraPose(VIEW_YAW, VIEW_PITCH, 32, 30, 20)
+    const north = cameraPose(Math.PI / 2, VIEW_PITCH, 32, 30, 20)
+    expect(east.spanX).toBeCloseTo(iso.spanX, 6)
+    expect(iso.spanX).toBeCloseTo(north.spanX, 6)
+    expect(east.spanY).toBeCloseTo(iso.spanY, 6)
+  })
+
+  it('does not dolly when pitching from the side view to overhead', () => {
+    const low = cameraPose(VIEW_YAW, VIEW_PITCH, 32, 30, 20)
+    const mid = cameraPose(VIEW_YAW, 1.0, 32, 30, 20)
+    const high = cameraPose(VIEW_YAW, OVERHEAD, 32, 30, 20)
+    expect(mid.spanX).toBeCloseTo(low.spanX, 6)
+    expect(high.spanX).toBeCloseTo(low.spanX, 6)
+    expect(mid.spanY).toBeCloseTo(low.spanY, 6)
+    expect(high.spanY).toBeCloseTo(low.spanY, 6)
+    expect(mid.target[1]).toBeCloseTo(low.target[1], 6)
+    expect(high.target[1]).toBeCloseTo(low.target[1], 6)
   })
 })
 
@@ -87,13 +115,33 @@ describe('view helpers', () => {
   })
 
   it('glides to a target and pins it exactly', () => {
+    const glide = { from: VIEW_PITCH, to: OVERHEAD, elapsed: 0 }
     let pitch = VIEW_PITCH
     let done = false
-    for (let i = 0; i < 400 && !done; i++) [pitch, done] = glideAngle(pitch, OVERHEAD, 1 / 60)
+    for (let i = 0; i < 400 && !done; i++) [pitch, done] = stepAngleGlide(glide, 1 / 60)
     expect(done).toBe(true)
     expect(pitch).toBe(OVERHEAD)
     expect(isOverhead(pitch)).toBe(true)
     expect(isOverhead(1.4)).toBe(false)
+  })
+
+  it('eases a tap with uniform accel then decel, slow-fast-slow', () => {
+    const duration = VIEW_MS / 1000
+    const at = (frac: number) => {
+      const glide = { from: 0, to: 1, elapsed: 0 }
+      const [value] = stepAngleGlide(glide, duration * frac)
+      return value
+    }
+    const early = at(0.1)
+    const quarter = at(0.25)
+    const mid = at(0.5)
+    const late = at(0.9)
+    expect(early).toBeGreaterThan(0)
+    expect(early).toBeLessThan(0.1)
+    expect(quarter - early).toBeGreaterThan(early)
+    expect(mid).toBeCloseTo(0.5, 5)
+    expect(late).toBeGreaterThan(0.9)
+    expect(1 - late).toBeLessThan(0.1)
   })
 
   it('squares the heading to the nearest quarter turn', () => {

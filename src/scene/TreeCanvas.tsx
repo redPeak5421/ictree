@@ -263,7 +263,7 @@ export function TreeCanvas({
 
   const foliage = (
     <>
-      <TreeFoliage rig={rig} scene={scene} tree={tree} season={season} shed={revealActive} />
+      <TreeFoliage rig={rig} scene={scene} tree={tree} season={season} shed={revealActive} reduced={reduced} />
       {reveal && (
         <LeafGather
           rig={rig}

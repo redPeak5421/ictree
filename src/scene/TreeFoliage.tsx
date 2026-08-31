@@ -18,6 +18,7 @@ import { pickFruitOrnaments } from './scatter'
 import type { FillerInstance, LeafInstance, TreeRig } from './tree'
 import { branchTones, leafLuma } from './treeAppearance'
 import { PINE_ENABLED, type TreeSpecies } from './treeSpecies'
+import { canopyWindFade, windBend, windShift, type WindBend } from './wind'
 
 const dummy = new Object3D()
 const tint = new Color()
@@ -58,19 +59,69 @@ function poseFinder(item: FinderVegetationInstance, lean: number) {
   dummy.updateMatrix()
 }
 
-/** Static canopy and QR-critical corner vegetation. Nothing faces the camera. */
+const REST_WIND: WindBend = { tilt: 0, twist: 0, lean: 0 }
+
+function poseWindItem(
+  position: [number, number, number],
+  euler: [number, number, number],
+  scale: number,
+  time: number,
+  fade: number,
+  gust: number,
+  yOffset = 0,
+) {
+  const bend = fade === 0 ? REST_WIND : windBend(time, position[0], position[2])
+  const [dx, dz] = windShift(bend.lean * gust, position[1])
+  dummy.position.set(position[0] + dx, position[1] + yOffset, position[2] + dz)
+  dummy.rotation.set(euler[0] + bend.tilt * gust, euler[1] + bend.twist * gust, euler[2], 'YXZ')
+  dummy.scale.setScalar(scale)
+  dummy.updateMatrix()
+}
+
+function poseWindGroup(
+  refs: Partial<Record<LeafShape, InstancedMesh | null>>,
+  grouped: Record<LeafShape, { position: [number, number, number]; euler: [number, number, number]; scale: number }[]>,
+  time: number,
+  fade: number,
+  gust: number,
+) {
+  for (const shape of LIVE_SHAPES) {
+    const mesh = refs[shape]
+    const items = grouped[shape]
+    if (!mesh || !items) continue
+    items.forEach((leaf, index) => {
+      poseWindItem(leaf.position, leaf.euler, leaf.scale, time, fade, gust)
+      mesh.setMatrixAt(index, dummy.matrix)
+    })
+    mesh.instanceMatrix.needsUpdate = true
+  }
+}
+
+/** Fruit hangs below the leaf; blossoms sit on it. Size stays inside the module. */
+function ornamentScale(leaf: OrnamentHost, fruit: boolean): number {
+  const ox = leaf.position[0] - Math.round(leaf.position[0])
+  const oz = leaf.position[2] - Math.round(leaf.position[2])
+  const room = (0.5 - Math.max(Math.abs(ox), Math.abs(oz))) / 0.32
+  return fruit
+    ? Math.min(room, Math.max(0.75, Math.min(leaf.scale, 1.6) * 0.75) * 1.1)
+    : Math.min(leaf.scale, 1.2) * 0.42
+}
+
+/** Canopy and QR-critical corner vegetation. Leaves rustle in side-view wind. */
 export function TreeFoliage({
   rig,
   scene,
   tree,
   season,
   shed = false,
+  reduced = false,
 }: {
   rig: TreeRig
   scene: SceneRef
   tree: TreeSpecies
   season: Season
   shed?: boolean
+  reduced?: boolean
 }) {
   const trunkRef = useRef<Mesh>(null)
   const limbRef = useRef<InstancedMesh>(null)
@@ -219,19 +270,9 @@ export function TreeFoliage({
     if (ornaments) {
       const fruit = ornamentKind === 'fruit'
       groups.ornaments.forEach((leaf, index) => {
-        // Fruit hangs a little below its leaf; blossoms sit on it.
-        // Fruit hangs a little below its leaf; blossoms sit on it. Big enough
-        // to read as an apple, but never past its own module's edge: the
-        // apple texture spans 0.64 of its plane, so half-extent is 0.32·scale.
-        const ox = leaf.position[0] - Math.round(leaf.position[0])
-        const oz = leaf.position[2] - Math.round(leaf.position[2])
-        const room = (0.5 - Math.max(Math.abs(ox), Math.abs(oz))) / 0.32
-        const size = fruit
-          ? Math.min(room, Math.max(0.75, Math.min(leaf.scale, 1.6) * 0.75) * 1.1)
-          : Math.min(leaf.scale, 1.2) * 0.42
         dummy.position.set(leaf.position[0], leaf.position[1] + (fruit ? -0.14 : 0.05), leaf.position[2])
         dummy.rotation.set(fruit ? -0.25 : leaf.euler[0], leaf.euler[1], 0, 'YXZ')
-        dummy.scale.setScalar(size)
+        dummy.scale.setScalar(ornamentScale(leaf, fruit))
         dummy.updateMatrix()
         ornaments.setMatrixAt(index, dummy.matrix)
       })
@@ -243,7 +284,8 @@ export function TreeFoliage({
   useFrame(({ clock }) => {
     const { colors, pitch } = scene.current
     const t = clock.elapsedTime
-    const sway = pitch > 1.45 ? 0 : 1
+    const fade = reduced || shed ? 0 : canopyWindFade(pitch)
+    const gust = tree === 'willow' ? 1.45 : 1
     const finderMeshes: readonly [InstancedMesh | null, FinderVegetationInstance[]][] = [
       [finderBladeRef.current, groups.finder.blade],
       [finderBroadRef.current, groups.finder.broad],
@@ -251,10 +293,54 @@ export function TreeFoliage({
     for (const [mesh, items] of finderMeshes) {
       if (!mesh) continue
       items.forEach((item, index) => {
-        poseFinder(item, item.lean + Math.sin(t * 1.35 + item.phase) * 0.03 * sway)
+        poseFinder(item, item.lean + Math.sin(t * 1.35 + item.phase) * 0.03 * fade)
         mesh.setMatrixAt(index, dummy.matrix)
       })
       mesh.instanceMatrix.needsUpdate = true
+    }
+
+    poseWindGroup(leafRefs.current, groups.leaves, t, fade, gust)
+    poseWindGroup(fillerRefs.current, groups.filler, t, fade, gust)
+
+    const ornaments = ornamentRef.current
+    if (ornaments) {
+      const fruit = ornamentKind === 'fruit'
+      groups.ornaments.forEach((leaf, index) => {
+        const bend = fade === 0 ? REST_WIND : windBend(t, leaf.position[0], leaf.position[2])
+        const [dx, dz] = windShift(bend.lean * gust, leaf.position[1])
+        dummy.position.set(leaf.position[0] + dx, leaf.position[1] + (fruit ? -0.14 : 0.05), leaf.position[2] + dz)
+        dummy.rotation.set(
+          (fruit ? -0.25 : leaf.euler[0]) + bend.tilt * gust,
+          leaf.euler[1] + bend.twist * gust,
+          0,
+          'YXZ',
+        )
+        dummy.scale.setScalar(ornamentScale(leaf, fruit))
+        dummy.updateMatrix()
+        ornaments.setMatrixAt(index, dummy.matrix)
+      })
+      ornaments.instanceMatrix.needsUpdate = true
+    }
+
+    const root = fade === 0 ? REST_WIND : windBend(t, 0, 0)
+    const branches = limbRef.current
+    if (branches) {
+      limbs.forEach((branch, index) => {
+        const [dx, dz] = windShift(root.lean * gust * 0.55, branch.position[1])
+        dummy.position.set(branch.position[0] + dx, branch.position[1], branch.position[2] + dz)
+        dummy.quaternion.set(...branch.quaternion)
+        dummy.scale.set(...branch.scale)
+        dummy.updateMatrix()
+        branches.setMatrixAt(index, dummy.matrix)
+      })
+      branches.instanceMatrix.needsUpdate = true
+    }
+    const trunk = trunkRef.current
+    if (trunk && bole) {
+      const [dx, dz] = windShift(root.lean * gust * 0.35, bole.y)
+      trunk.position.set(dx, bole.y, dz)
+      trunk.rotation.z = root.tilt * 0.22 * gust
+      trunk.rotation.x = root.twist * 0.16 * gust
     }
 
     const lift = colors.inkLift
@@ -263,15 +349,15 @@ export function TreeFoliage({
     colorKey.current = next
 
     const [bark, limb] = branchTones(colors, pitch)
-    const trunk = trunkRef.current
-    if (trunk?.material instanceof MeshBasicMaterial) trunk.material.color.set(bark)
-    const branches = limbRef.current
-    if (branches) {
+    const trunkMesh = trunkRef.current
+    if (trunkMesh?.material instanceof MeshBasicMaterial) trunkMesh.material.color.set(bark)
+    const limbMesh = limbRef.current
+    if (limbMesh) {
       limbs.forEach((_branch, index) => {
         tint.set(limb)
-        branches.setColorAt(index, tint)
+        limbMesh.setColorAt(index, tint)
       })
-      if (branches.instanceColor) branches.instanceColor.needsUpdate = true
+      if (limbMesh.instanceColor) limbMesh.instanceColor.needsUpdate = true
     }
 
     const tones = foliageTones(colors)
@@ -356,8 +442,8 @@ export function TreeFoliage({
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
     }
 
-    const ornaments = ornamentRef.current
-    if (ornaments) {
+    const ornamentMesh = ornamentRef.current
+    if (ornamentMesh) {
       groups.ornaments.forEach((leaf, index) => {
         const key = `o|${leaf.ink}`
         let color = inkCache.get(key)
@@ -366,9 +452,9 @@ export function TreeFoliage({
           color = new Color(toLumaHex(hex, leafLuma(hex, leaf.ink + lift, pitch)))
           inkCache.set(key, color)
         }
-        ornaments.setColorAt(index, color)
+        ornamentMesh.setColorAt(index, color)
       })
-      if (ornaments.instanceColor) ornaments.instanceColor.needsUpdate = true
+      if (ornamentMesh.instanceColor) ornamentMesh.instanceColor.needsUpdate = true
     }
   })
 
