@@ -1,6 +1,6 @@
 export const SECRET_PREFIX = 'gv2.'
 export const WRAP_TOO_LONG = 'Password-protected URL is too long'
-/** Locked groves stay at or under QR version 10 (ECC M, byte mode). */
+/** Locked payloads stay at or under QR version 10 (ECC M, byte mode). */
 export const MAX_WRAP_VERSION = 10
 const MAX_TOKEN_BYTES = 213
 

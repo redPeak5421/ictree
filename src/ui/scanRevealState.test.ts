@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  canInteractWithGrove,
+  canInteractWithTree,
   finishScanReveal,
   materializeScanReveal,
   requestScanRevealClose,
@@ -18,19 +18,19 @@ describe('scan reveal lifecycle', () => {
     const settled = settleScanReveal(opening)
     const closing = requestScanRevealClose(settled)
 
-    expect(canInteractWithGrove(null)).toBe(true)
-    expect(canInteractWithGrove(opening)).toBe(false)
-    expect(canInteractWithGrove(materializing)).toBe(false)
-    expect(canInteractWithGrove(settled)).toBe(true)
-    expect(canInteractWithGrove(closing)).toBe(false)
+    expect(canInteractWithTree(null)).toBe(true)
+    expect(canInteractWithTree(opening)).toBe(false)
+    expect(canInteractWithTree(materializing)).toBe(false)
+    expect(canInteractWithTree(settled)).toBe(true)
+    expect(canInteractWithTree(closing)).toBe(false)
   })
 
   it('defers a mode change until WebGL leaves have completed their return', () => {
-    const settled = settleScanReveal(startScanReveal('https://example.com/grove'))
+    const settled = settleScanReveal(startScanReveal('https://example.com/tree'))
 
     expect(requestScanRevealModeChange(settled, 'create', true)).toEqual({
       reveal: {
-        text: 'https://example.com/grove',
+        text: 'https://example.com/tree',
         closing: true,
         materializing: true,
         settled: true,
@@ -93,7 +93,7 @@ describe('scan reveal lifecycle', () => {
   })
 
   it('requests close without clearing the reveal', () => {
-    const started = startScanReveal('https://example.com/grove')
+    const started = startScanReveal('https://example.com/tree')
 
     expect(requestScanRevealClose(started)).toEqual({
       text: started.text,

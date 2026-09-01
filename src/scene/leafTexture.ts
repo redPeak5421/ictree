@@ -543,7 +543,7 @@ let bark: CanvasTexture | null = null
 
 /**
  * Pale wood wash for the trunk and limbs. A few wide, faint bands only —
- * dense cracks read as noise at grove scale. Contrast stays modest so
+ * dense cracks read as noise at scene scale. Contrast stays modest so
  * overhead pale wood cannot darken a light QR module.
  */
 export function barkTexture(): CanvasTexture {

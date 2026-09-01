@@ -1,7 +1,7 @@
 import { crc32, unframeStillPayload } from './stillEncode'
 
-export const PNG_TEXT_KEY = 'grove'
-export const PNG_CHUNK_TYPE = 'grVe'
+export const PNG_TEXT_KEY = 'ictree'
+export const PNG_CHUNK_TYPE = 'icTr'
 
 const PNG_SIG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 const TEXT_ENCODER = new TextEncoder()
@@ -73,7 +73,7 @@ function walkPng(buf: Uint8Array): PngChunk[] {
   return chunks
 }
 
-export function textGroveData(search: string): Uint8Array {
+export function textShareData(search: string): Uint8Array {
   const key = TEXT_ENCODER.encode(PNG_TEXT_KEY)
   const value = TEXT_ENCODER.encode(search)
   const out = new Uint8Array(key.length + 1 + value.length)

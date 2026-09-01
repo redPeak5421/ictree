@@ -73,7 +73,7 @@ describe('share params', () => {
     expect(parseShareParams(search).url).toBe('你好')
   })
 
-  it('opens a colour-block grove from k=b and defaults to plants', () => {
+  it('opens a colour-block tree from k=b and defaults to plants', () => {
     expect(parseShareParams('?u=ok&k=b').ink).toBe('blocks')
     expect(parseShareParams('?u=ok').ink).toBe('plants')
     expect(buildShareSearch({
@@ -101,7 +101,7 @@ describe('share params', () => {
   })
 
   it('round-trips a binary wrapped token in the share search', async () => {
-    const token = await wrapSecret('https://example.com/a b', 'grove')
+    const token = await wrapSecret('https://example.com/a b', 'ictree')
     const search = buildShareSearch({
       url: token,
       season: 'autumn',

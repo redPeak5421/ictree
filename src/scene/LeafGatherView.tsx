@@ -387,7 +387,7 @@ function configureGatherMaterial(
     shader.vertexShader = injectGatherVertexShader(shader.vertexShader)
     current.uniforms = uniforms
   }
-  material.customProgramCacheKey = () => 'grove-leaf-gather-gpu-v1'
+  material.customProgramCacheKey = () => 'ictree-leaf-gather-gpu-v1'
   material.needsUpdate = true
 }
 
@@ -492,7 +492,7 @@ export function LeafGather({
 }: LeafGatherProps) {
   const { camera, size } = useThree()
   if (!(camera instanceof OrthographicCamera)) {
-    throw new Error('LeafGather requires the grove OrthographicCamera.')
+    throw new Error('LeafGather requires the scene OrthographicCamera.')
   }
 
   const leafRefs = useRef<Partial<Record<LeafShape, InstancedMesh | null>>>({})

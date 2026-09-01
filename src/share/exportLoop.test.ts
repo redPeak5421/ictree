@@ -9,7 +9,7 @@ import {
 import type { ShareState } from './params'
 
 const SHARE_STATE: ShareState = {
-  url: 'https://example.com/grove',
+  url: 'https://example.com/ictree',
   season: 'summer',
   tree: 'cherry',
   locked: false,

@@ -1,6 +1,6 @@
 import { LOCALES, type Locale } from './messages'
 
-export const LOCALE_STORAGE_KEY = 'grove.locale'
+export const LOCALE_STORAGE_KEY = 'ictree.locale'
 
 export function isLocale(value: string): value is Locale {
   return LOCALES.some((locale) => locale.id === value)

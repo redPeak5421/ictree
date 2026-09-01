@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useT } from '../i18n/useLocale'
 import type { ModuleGrid } from '../qr/types'
 import type { SceneColors } from '../scene/palettes'
-import { scanGrovePayload } from '../share/scanGrove'
+import { scanTreePayload } from '../share/scanTree'
 import { isWrapped, unwrapSecret } from '../share/secret'
 import { PasswordField } from './PasswordField'
 
@@ -42,7 +42,7 @@ export function RevealPanel({
     setBusy(true)
     setNote(null)
     try {
-      const payload = scanGrovePayload(grid, colors)
+      const payload = scanTreePayload(grid, colors)
       if (!payload) {
         setNote(t.holdOverhead)
         return
@@ -76,7 +76,7 @@ export function RevealPanel({
       )}
       <div className="reveal-actions">
         <button type="button" className="scan-btn" onClick={() => void scan()} disabled={busy || disabled}>
-          {busy ? t.scanning : t.scanGrove}
+          {busy ? t.scanning : t.scanTree}
         </button>
         {shareMenu}
       </div>

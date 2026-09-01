@@ -10,7 +10,7 @@ import {
   readPngChunk,
   readPngText,
   readPngTrailer,
-  textGroveData,
+  textShareData,
 } from './containerMeta'
 import { frameStillPayload, unframeStillPayload } from './stillEncode'
 
@@ -63,21 +63,21 @@ describe('PNG still metadata', () => {
   it('writes and reads tEXt, grVe, and an IEND trailer', () => {
     const framed = frameStillPayload(SEARCH)
     const withChunks = insertPngChunksAfterIhdr(MIN_PNG, [
-      { type: 'tEXt', data: textGroveData(SEARCH) },
+      { type: 'tEXt', data: textShareData(SEARCH) },
       { type: 'grVe', data: framed },
     ])
     const full = appendPngTrailer(withChunks, framed)
-    expect(readPngText(full, 'grove')).toBe(SEARCH)
+    expect(readPngText(full, 'ictree')).toBe(SEARCH)
     expect(unframeStillPayload(readPngChunk(full, 'grVe')!)).toBe(SEARCH)
     expect(unframeStillPayload(readPngTrailer(full)!)).toBe(SEARCH)
 
     const noTrailer = stripPngTrailer(full)
-    expect(readPngText(noTrailer, 'grove')).toBe(SEARCH)
+    expect(readPngText(noTrailer, 'ictree')).toBe(SEARCH)
     expect(unframeStillPayload(readPngChunk(noTrailer, 'grVe')!)).toBe(SEARCH)
     expect(readPngTrailer(noTrailer)).toBeNull()
 
     const pixelsOnly = rebuildPngWithoutMeta(full)
-    expect(readPngText(pixelsOnly, 'grove')).toBeNull()
+    expect(readPngText(pixelsOnly, 'ictree')).toBeNull()
     expect(readPngChunk(pixelsOnly, 'grVe')).toBeNull()
     expect(readPngTrailer(pixelsOnly)).toBeNull()
   })

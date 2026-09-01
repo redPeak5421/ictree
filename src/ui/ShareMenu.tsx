@@ -224,7 +224,7 @@ export function ShareMenu({
         </button>
         <a
           role="menuitem"
-          href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('grove')}&url=${encodeURIComponent(link)}`}
+          href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('ictree')}&url=${encodeURIComponent(link)}`}
           target="_blank"
           rel="noopener noreferrer"
         >

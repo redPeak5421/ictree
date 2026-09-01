@@ -2,7 +2,7 @@ import { QUIET_ZONE, type ModuleGrid } from '../qr/types'
 import { rasterQr } from '../qr/raster'
 import type { SceneColors } from '../scene/palettes'
 
-export function downloadQrPng(grid: ModuleGrid, colors: SceneColors, filename = 'grove-qr.png') {
+export function downloadQrPng(grid: ModuleGrid, colors: SceneColors, filename = 'ictree-qr.png') {
   const n = grid.size + QUIET_ZONE * 2
   const modulePx = Math.max(8, Math.floor(1024 / n))
   const { data, width, height } = rasterQr(grid, colors, {

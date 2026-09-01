@@ -116,7 +116,7 @@ describe('layoutLeafText', () => {
   })
 
   it('wraps a long unspaced URL by Unicode code point without changing it', () => {
-    const text = 'https://example.com/🌳林/grove-with-a-very-long-unspaced-path'
+    const text = 'https://example.com/🌳林/trees-with-a-very-long-unspaced-path'
     const layout = layoutLeafText(
       text,
       { maxWidth: 84, maxHeight: 240, minFontSize: 8, maxFontSize: 16 },
@@ -137,30 +137,30 @@ describe('layoutLeafText', () => {
 
   it('prefers whitespace wrap points while preserving that whitespace', () => {
     const layout = layoutLeafText(
-      'leaf grove canopy',
+      'leaf trees canopy',
       { maxWidth: 35, maxHeight: 100, minFontSize: 10, maxFontSize: 10, lineHeightRatio: 1 },
       measure,
     )
 
-    expect(layout.lines).toEqual(['leaf ', 'grove ', 'canopy'])
+    expect(layout.lines).toEqual(['leaf ', 'trees ', 'canopy'])
     expect(layout.breaks).toEqual(['wrap', 'wrap'])
-    expect(reconstruct(layout)).toBe('leaf grove canopy')
+    expect(reconstruct(layout)).toBe('leaf trees canopy')
   })
 
   it('preserves explicit lines and shrinks until their total height fits', () => {
     const layout = layoutLeafText(
-      'Grove\nReveal',
+      'Trees\nReveal',
       { maxWidth: 200, maxHeight: 36, minFontSize: 10, maxFontSize: 20 },
       measure,
     )
 
-    expect(layout.lines).toEqual(['Grove', 'Reveal'])
+    expect(layout.lines).toEqual(['Trees', 'Reveal'])
     expect(layout.breaks).toEqual(['\n'])
     expect(layout.fontSize).toBe(15)
     expect(layout.lineHeight).toBe(18)
     expect(layout.height).toBe(36)
     expect(layout.width).toBeLessThanOrEqual(200)
-    expect(reconstruct(layout)).toBe('Grove\nReveal')
+    expect(reconstruct(layout)).toBe('Trees\nReveal')
   })
 
   it('treats empty text as one empty display line', () => {
@@ -196,13 +196,13 @@ describe('layoutLeafText', () => {
   it('rejects invalid bounds and invalid measurement results', () => {
     const valid = { maxWidth: 100, maxHeight: 100, minFontSize: 10, maxFontSize: 20 }
 
-    expect(() => layoutLeafText('Grove', { ...valid, maxWidth: 0 }, measure)).toThrow(RangeError)
-    expect(() => layoutLeafText('Grove', { ...valid, maxHeight: Number.NaN }, measure)).toThrow(RangeError)
-    expect(() => layoutLeafText('Grove', { ...valid, minFontSize: 0 }, measure)).toThrow(RangeError)
-    expect(() => layoutLeafText('Grove', { ...valid, maxFontSize: 9 }, measure)).toThrow(RangeError)
-    expect(() => layoutLeafText('Grove', valid, () => Number.NaN)).toThrow(RangeError)
-    expect(() => layoutLeafText('Grove', valid, () => -1)).toThrow(RangeError)
-    expect(() => layoutLeafText('Grove', valid, () => Number.POSITIVE_INFINITY)).toThrow(RangeError)
+    expect(() => layoutLeafText('Trees', { ...valid, maxWidth: 0 }, measure)).toThrow(RangeError)
+    expect(() => layoutLeafText('Trees', { ...valid, maxHeight: Number.NaN }, measure)).toThrow(RangeError)
+    expect(() => layoutLeafText('Trees', { ...valid, minFontSize: 0 }, measure)).toThrow(RangeError)
+    expect(() => layoutLeafText('Trees', { ...valid, maxFontSize: 9 }, measure)).toThrow(RangeError)
+    expect(() => layoutLeafText('Trees', valid, () => Number.NaN)).toThrow(RangeError)
+    expect(() => layoutLeafText('Trees', valid, () => -1)).toThrow(RangeError)
+    expect(() => layoutLeafText('Trees', valid, () => Number.POSITIVE_INFINITY)).toThrow(RangeError)
   })
 
   it('falls back from a huge unfitting font size to a valid minimum without stalling', () => {
@@ -290,7 +290,7 @@ describe('sampleLeafTargets', () => {
 
   it('reuses active pixels with deterministic in-pixel jitter when more targets are requested', () => {
     const alpha = new Uint8ClampedArray([255, 0, 0, 0, 0, 255])
-    const targets = sampleLeafTargets(alpha, 3, 2, 7, 'grove')
+    const targets = sampleLeafTargets(alpha, 3, 2, 7, 'trees')
 
     expect(targets).toHaveLength(7)
     expect(new Set(targets.map(({ x, y }) => `${x},${y}`)).size).toBeGreaterThan(2)

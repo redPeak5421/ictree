@@ -12,7 +12,7 @@ import { blitSiteQr, rasterSiteQr, siteQrPayload } from './siteQr'
 export const LOOP_FRAMES = 20
 export const LOOP_DELAY_MS = 180
 const LOOP_MAX_SIDE = 640
-const LOOP_FILENAME = 'grove-loop.gif'
+const LOOP_FILENAME = 'ictree-loop.gif'
 
 const PRESERVE_CURRENT_CAMERA = Symbol('preserve-current-camera')
 
@@ -83,7 +83,7 @@ export async function downloadLoopGif(
   const search = buildShareSearch(state)
   const colors = colorsOf(state.season, state.tree)
   const site = siteQrPayload()
-  const src = document.querySelector('[data-grove-canvas]') as HTMLCanvasElement | null
+  const src = document.querySelector('[data-ictree-canvas]') as HTMLCanvasElement | null
   if (!src) throw new Error(STILL_NO_CANVAS)
   const cam = scene.current
   const backup = {

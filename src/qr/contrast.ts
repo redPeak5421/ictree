@@ -58,7 +58,7 @@ export function moduleInkLuma(cell: ModuleCell): number {
 /**
  * Colour-block ink: meadow tiles are solid grass, canopy tiles are the
  * tree's own leaf colours. Families stay apart — no global wash.
- * 8px jsQR needs dark modules at or below 0.45. The on-screen grove is
+ * 8px jsQR needs dark modules at or below 0.45. The on-screen tree is
  * much larger, so view tiles keep a paler cap and already-dark hues
  * stay as painted instead of being crushed to one muddy ink.
  */

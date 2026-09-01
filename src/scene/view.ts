@@ -36,7 +36,7 @@ export function sceneryOpacity(pitch: number): number {
 }
 
 /**
- * Colour-block ink follows the same camera move as the plant grove. Mix is
+ * Colour-block ink follows the same camera move as the plant scene. Mix is
  * the elevation, not a tap timer: the side view stays the tree, and the
  * mosaic grows as the camera goes overhead. The band covers most of the
  * 900ms glide so leaves have time to settle into tiles.

@@ -54,7 +54,7 @@ describe('cameraPose', () => {
     expect(high.spanY).toBeGreaterThan(low.spanY * 0.8)
   })
 
-  it('keeps the look-at on the island axis at every heading so the grove does not orbit the screen', () => {
+  it('keeps the look-at on the island axis at every heading so the tree does not orbit the screen', () => {
     for (const yaw of [0, 0.4, VIEW_YAW, 1.1, Math.PI / 2]) {
       const pose = cameraPose(yaw, VIEW_PITCH, 32, 30, 20)
       expect(pose.target[0]).toBeCloseTo(0, 6)
@@ -91,7 +91,7 @@ describe('view helpers', () => {
     expect(sceneryOpacity(OVERHEAD)).toBe(0)
   })
 
-  it('grows colour blocks with the camera, the way the plant grove becomes the code', () => {
+  it('grows colour blocks with the camera, the way the plant scene becomes the code', () => {
     expect(inkMixTarget(false, OVERHEAD)).toBe(0)
     expect(inkMixTarget(true, VIEW_PITCH)).toBe(0)
     expect(inkMixTarget(true, OVERHEAD)).toBe(1)

@@ -203,7 +203,7 @@ describe('leafGatherTextBounds', () => {
   })
 
   it('retains the preferred minimum font floor for ordinary text', () => {
-    expect(leafGatherTextBoundsFor('Grove reveal', 800, 600).minFontSize).toBe(
+    expect(leafGatherTextBoundsFor('Trees reveal', 800, 600).minFontSize).toBe(
       leafGatherTextBounds(800, 600).minFontSize,
     )
   })

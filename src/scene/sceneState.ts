@@ -27,7 +27,7 @@ export interface SceneState {
   pitchTarget: number | null
   /** Heading it squares up to on the way overhead. */
   yawTarget: number | null
-  /** Magnification about the island centre; 1 fits the whole grove. */
+  /** Magnification about the island centre; 1 fits the whole island. */
   zoom: number
   /** Magnification the camera is gliding to (overhead always returns to 1). */
   zoomTarget: number | null

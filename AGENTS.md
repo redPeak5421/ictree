@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-Grove is a client-only Vite + React + Three.js app: a URL becomes a QR module grid, and the 3D tree **is** that grid from overhead. Scanability is the ship gate.
+ictree is a client-only Vite + React + Three.js app: a URL becomes a QR module grid, and the 3D tree **is** that grid from overhead. Scanability is the ship gate.
 
 ## Agent Work Style
 
@@ -12,7 +12,7 @@ Do not reopen closed product decisions below unless the user asks.
 
 ## Project Overview
 
-Type a URL in **Create** (optional password), grow a grove, and share it. **Reveal** imports a still/loop or a locked `?u=` token, then locally scans the live mosaic. Encrypted content is never readable from metadata or the address bar alone.
+Type a URL in **Create** (optional password), grow a tree, and share it. **Reveal** imports a still/loop or a locked `?u=` token, then locally scans the live mosaic. Encrypted content is never readable from metadata or the address bar alone.
 
 - Live QR payload is the URL **or** a `gv1.` AES-GCM token — never the share-search string.
 - Share files stay visually clean. Payload lives in **container metadata only**.
@@ -26,7 +26,7 @@ Do not copy ICQR / Enzo branding or source.
 ```
 URL / password  →  wrapSecret?  →  encodeGrid (uqr, ECC M)
         ↓
-   ModuleGrid   →  buildTree + Grass/Ground   →  WebGL grove
+   ModuleGrid   →  buildTree + Grass/Ground   →  WebGL scene
         ↓                                      ↓
    rasterQr + jsQR                      camera pitch
    (Reveal scan / Download QR)          OVERHEAD = π/2 = code
@@ -36,7 +36,7 @@ URL / password  →  wrapSecret?  →  encodeGrid (uqr, ECC M)
 
 1. `src/main.tsx` mounts `App`. `useTreeState` boots from `parseShareParams(location.search)`.
 2. **Create** (200 ms debounce): `payloadError` → `normalizePayload` (https only for hosts, not plain text) → optional `wrapSecret` → `encodeGrid`.
-3. **Reveal** re-encodes `payload`. `RevealPanel` calls `scanGrovePayload` (flat mosaic, not the WebGL canvas), then `unwrapSecret` if locked.
+3. **Reveal** re-encodes `payload`. `RevealPanel` calls `scanTreePayload` (flat mosaic, not the WebGL canvas), then `unwrapSecret` if locked.
 4. `TreeCanvas` uses `resolveTreeChoice(payload, tree)` → `buildTree`. Leaves and filler stay on **dark modules only**. Finder ink is grass, luma-pinned.
 5. Animated camera/colors live on `scene.current` (`src/scene/sceneState.ts`) and are read in `useFrame`. React holds URL, password, payload, grid, mode, season, tree, error.
 6. `buildShareSearch` writes `?u=&s=&t=` plus `e=1` when locked and `m=r` in Reveal. That search string is what still/loop metadata stores.
@@ -45,13 +45,13 @@ URL / password  →  wrapSecret?  →  encodeGrid (uqr, ECC M)
 
 | Write | Where |
 | --- | --- |
-| PNG `tEXt grove`, private `grVe`, IEND trailer | `exportStill.ts` + `containerMeta.ts` |
+| PNG `tEXt ictree`, private `icTr`, IEND trailer | `exportStill.ts` + `containerMeta.ts` |
 | GIF comment | `exportLoop.ts` (`LOOP_DELAY_MS = 180`, 20 frames, max 640, never the overhead frame) |
 | JPEG `COM` | import only |
 
-Import (`readStillFile`) reads those channels only. Social JPEG that strips metadata fails with `This image is not a grove still.` Do not add pixel QR / LSB / gifuct to “fix” that.
+Import (`readStillFile`) reads those channels only. Social JPEG that strips metadata fails with `This image is not an ictree share.` Do not add pixel QR / LSB / gifuct to “fix” that.
 
-**Download QR** (`exportPng.ts`) is a separate flat mosaic (`grove-qr.png`). Do not change it when changing still/loop.
+**Download QR** (`exportPng.ts`) is a separate flat mosaic (`ictree-qr.png`). Do not change it when changing still/loop.
 
 ## Key Directories
 
@@ -123,13 +123,13 @@ Vite has no custom `server.port`. Bind may be IPv6-only (`http://localhost:5199/
 | `src/app/useTreeState.ts` | Wrap, history, `applyShareState` (always Reveal; locked URL stays `DEFAULT_PAYLOAD`) |
 | `src/share/params.ts` | `ShareState = { url, season, tree, locked, mode }` |
 | `src/share/secret.ts` | `gv1.` + PBKDF2-SHA256 120000, salt 16, IV 12, `MAX_WRAPPED = 280` |
-| `src/share/scanGrove.ts` | `rasterQr` + jsQR `attemptBoth` |
+| `src/share/scanTree.ts` | `rasterQr` + jsQR `attemptBoth` |
 | `src/share/stillEncode.ts` | `GRV1` frame + CRC only (no pixel embed) |
 | `src/share/containerMeta.ts` | PNG/GIF/JPEG container read/write; `pickHiddenSearch` |
 | `src/share/exportLoop.ts` | Slow orbit GIF; restore camera in `finally` |
 | `src/qr/encode.ts` / `contrast.ts` / `raster.ts` | Living and downloadable 2D code |
 | `src/scene/tree.ts` / `treeSpecies.ts` / `palettes.ts` | Crown + season/species contracts |
-| `src/scene/TreeCanvas.tsx` | `preserveDrawingBuffer` + `data-grove-canvas` (required for Save Still/Loop) |
+| `src/scene/TreeCanvas.tsx` | `preserveDrawingBuffer` + `data-ictree-canvas` (required for Save Still/Loop) |
 | `src/ui/RevealPanel.tsx` | Scan + password; no URL field |
 | `package.json`, `vite.config.ts`, `tsconfig.json` | Tooling |
 
@@ -138,7 +138,7 @@ Vite has no custom `server.port`. Bind may be IPv6-only (`http://localhost:5199/
 - **Runtime:** Node + browser APIs. Not Bun. No `engines` / `packageManager` field.
 - **Package manager:** npm (`package-lock.json` lockfileVersion 3). Do not add a second lockfile.
 - **Stack:** Vite 6, React 19, TypeScript 7, R3F / three, `uqr`, `jsqr`, `gifenc`.
-- **`jsqr` is a production dependency** (`scanGrove.ts`). Keep it in `dependencies`.
+- **`jsqr` is a production dependency** (`scanTree.ts`). Keep it in `dependencies`.
 - **`gifenc`** has no upstream types; use `src/share/gifenc.d.ts`. Its write-frame API has no comment field — comments are injected as bytes.
 - **No** `gifuct-js`, pixel stego, ESLint, Prettier, Tailwind, backend, or env vars (`src/vite-env.d.ts` is Vite client types only).
 - Tests run in **Node**. Do not import `downloadStillPng` / `downloadLoopGif` (they need `document`) into unit tests.
@@ -156,7 +156,7 @@ Colocate tests next to the module. Style is `describe` / `it` / `expect` with in
 
 **Contracts to keep green:**
 
-- Wrap hides the URL; wrong password → `null`; scan of a locked grove returns the `gv1.` token, not the plaintext.
+- Wrap hides the URL; wrong password → `null`; scan of a locked tree returns the `gv1.` token, not the plaintext.
 - `LOOP_DELAY_MS >= 160` (source is 180).
 - Share params: `u/s/t` plus `e`/`m`; leftover `p=` still resolves a tree.
 - Import is metadata-only; empty / plain / `> 12MB` files throw `STILL_ERROR`.
@@ -164,7 +164,7 @@ Colocate tests next to the module. Style is `describe` / `it` / `expect` with in
 - `rasterQr` + jsQR still decodes; 1024px Download QR is not cropped.
 - Species from `t=`; crown layers populated; finder blades stay in dark ink.
 
-After **share/crypto**: `src/share/*.test.ts`. After **scene/scanability**: `raster.test.ts`, `scanGrove.test.ts`, `contrast.test.ts`, `tree.test.ts`, `grassLayout.test.ts`, `treeProjection.test.ts` (slow), then the full suite.
+After **share/crypto**: `src/share/*.test.ts`. After **scene/scanability**: `raster.test.ts`, `scanTree.test.ts`, `contrast.test.ts`, `tree.test.ts`, `grassLayout.test.ts`, `treeProjection.test.ts` (slow), then the full suite.
 
 Live check: Create wrap → address bar shows `gv1.` + `e=1`; Reveal has no URL box; Scan without password asks for it; Scan with password yields the URL. Overhead should decode; side view should not look like a flat QR.
 
@@ -174,7 +174,7 @@ Do **not** reintroduce:
 
 - Pixel QR, LSB, `paintHiddenQr` / `extractHiddenQr` / `embedStillPayload`, or `gifuct-js`
 - `VarietyBar` or `speciesForPayload` as a species resolver
-- Encoding `buildShareSearch` into the living grove QR
+- Encoding `buildShareSearch` into the living tree QR
 - Docs the user did not ask for
 
-`applyShareState` must: set Reveal, apply season/tree, reset camera to `VIEW_PITCH` / `VIEW_YAW`, set `url` to `DEFAULT_PAYLOAD` when locked (otherwise the imported URL). Keep `preserveDrawingBuffer` and `[data-grove-canvas]`.
+`applyShareState` must: set Reveal, apply season/tree, reset camera to `VIEW_PITCH` / `VIEW_YAW`, set `url` to `DEFAULT_PAYLOAD` when locked (otherwise the imported URL). Keep `preserveDrawingBuffer` and `[data-ictree-canvas]`.

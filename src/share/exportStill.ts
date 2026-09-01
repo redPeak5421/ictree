@@ -1,10 +1,10 @@
 import { colorsOf } from '../scene/palettes'
-import { appendPngTrailer, insertPngChunksAfterIhdr, PNG_CHUNK_TYPE, textGroveData } from './containerMeta'
+import { appendPngTrailer, insertPngChunksAfterIhdr, PNG_CHUNK_TYPE, textShareData } from './containerMeta'
 import { buildShareSearch, type ShareState } from './params'
 import { compositeSiteQr, siteQrPayload } from './siteQr'
 import { frameStillPayload } from './stillEncode'
 
-const STILL_FILENAME = 'grove-still.png'
+const STILL_FILENAME = 'ictree-still.png'
 export const STILL_NO_CANVAS = 'Need WebGL to save a still.'
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -25,7 +25,7 @@ function nextFrame(): Promise<void> {
 export async function downloadStillPng(state: ShareState): Promise<void> {
   const search = buildShareSearch(state)
   const framed = frameStillPayload(search)
-  const src = document.querySelector('[data-grove-canvas]') as HTMLCanvasElement | null
+  const src = document.querySelector('[data-ictree-canvas]') as HTMLCanvasElement | null
   if (!src) throw new Error(STILL_NO_CANVAS)
   await nextFrame()
   const out = document.createElement('canvas')
@@ -41,7 +41,7 @@ export async function downloadStillPng(state: ShareState): Promise<void> {
   if (!blob) throw new Error(STILL_NO_CANVAS)
   const bytes = new Uint8Array(await blob.arrayBuffer())
   const withChunks = insertPngChunksAfterIhdr(bytes, [
-    { type: 'tEXt', data: textGroveData(search) },
+    { type: 'tEXt', data: textShareData(search) },
     { type: PNG_CHUNK_TYPE, data: framed },
   ])
   const final = appendPngTrailer(withChunks, framed)

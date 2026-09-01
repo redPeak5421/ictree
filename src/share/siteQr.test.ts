@@ -27,7 +27,7 @@ function sample(frame: { data: Uint8ClampedArray; width: number }, x: number, y:
 
 describe('siteQrPayload', () => {
   it('encodes the current origin as a URL', () => {
-    expect(siteQrPayload('https://grove.example.com', '/')).toBe('https://grove.example.com/')
+    expect(siteQrPayload('https://ictree.example.com', '/')).toBe('https://ictree.example.com/')
     expect(siteQrPayload('https://ictree.example.workers.dev/', '')).toBe('https://ictree.example.workers.dev/')
   })
 
@@ -42,7 +42,7 @@ describe('siteQrPayload', () => {
 })
 
 describe('compositeSiteQr', () => {
-  const site = 'https://grove.example.com/'
+  const site = 'https://ictree.example.com/'
 
   it('paints a bottom-right themed QR of the site address', () => {
     const frame = creamFrame(640, 480)
@@ -69,10 +69,10 @@ describe('compositeSiteQr', () => {
     expect(decodeFrame(maple)?.data).toBe(site)
   })
 
-  it('encodes the site address, not the grove payload', () => {
+  it('encodes the site address, not the tree payload', () => {
     const frame = creamFrame(512, 512)
-    compositeSiteQr(frame, colorsOf('summer', 'willow'), 'https://grove.example.com/app')
-    expect(decodeFrame(frame)?.data).toBe('https://grove.example.com/app')
+    compositeSiteQr(frame, colorsOf('summer', 'willow'), 'https://ictree.example.com/app')
+    expect(decodeFrame(frame)?.data).toBe('https://ictree.example.com/app')
     expect(decodeFrame(frame)?.data).not.toBe('https://secret.example/hidden')
   })
 

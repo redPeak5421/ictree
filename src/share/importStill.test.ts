@@ -4,7 +4,7 @@ import {
   injectGifComment,
   insertPngChunksAfterIhdr,
   PNG_CHUNK_TYPE,
-  textGroveData,
+  textShareData,
 } from './containerMeta'
 import { readStillFile, STILL_ERROR } from './importStill'
 import { frameStillPayload } from './stillEncode'
@@ -41,17 +41,17 @@ describe('readStillFile', () => {
     const framed = frameStillPayload(SEARCH)
     const png = appendPngTrailer(
       insertPngChunksAfterIhdr(MIN_PNG, [
-        { type: 'tEXt', data: textGroveData(SEARCH) },
+        { type: 'tEXt', data: textShareData(SEARCH) },
         { type: PNG_CHUNK_TYPE, data: framed },
       ]),
       framed,
     )
-    await expect(readStillFile(fileOf(png, 'grove-still.png', 'image/png'))).resolves.toEqual(STATE)
+    await expect(readStillFile(fileOf(png, 'ictree-still.png', 'image/png'))).resolves.toEqual(STATE)
   })
 
   it('reads a GIF comment', async () => {
     const gif = injectGifComment(MIN_GIF, SEARCH)
-    await expect(readStillFile(fileOf(gif, 'grove-loop.gif', 'image/gif'))).resolves.toEqual(STATE)
+    await expect(readStillFile(fileOf(gif, 'ictree-loop.gif', 'image/gif'))).resolves.toEqual(STATE)
   })
 
   it('reads a JPEG COM segment', async () => {
@@ -67,7 +67,7 @@ describe('readStillFile', () => {
     jpeg.set(payload, 6)
     jpeg[6 + payload.length] = 0xff
     jpeg[7 + payload.length] = 0xd9
-    await expect(readStillFile(fileOf(jpeg, 'grove.jpg', 'image/jpeg'))).resolves.toEqual(STATE)
+    await expect(readStillFile(fileOf(jpeg, 'ictree.jpg', 'image/jpeg'))).resolves.toEqual(STATE)
   })
 
   it('rejects empty, oversized, and metadata-less files', async () => {

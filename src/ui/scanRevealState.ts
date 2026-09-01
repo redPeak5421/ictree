@@ -7,7 +7,7 @@ export interface ScanRevealState {
   settled: boolean
 }
 
-export function canInteractWithGrove(state: ScanRevealState | null): boolean {
+export function canInteractWithTree(state: ScanRevealState | null): boolean {
   return state === null || (state.settled && !state.closing)
 }
 

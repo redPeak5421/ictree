@@ -12,7 +12,7 @@ import { QrFallback } from '../ui/QrFallback'
 import { RevealPanel } from '../ui/RevealPanel'
 import { ScanReveal } from '../ui/ScanReveal'
 import {
-  canInteractWithGrove,
+  canInteractWithTree,
   finishScanReveal,
   materializeScanReveal,
   requestScanRevealClose,
@@ -32,7 +32,7 @@ export function App() {
   const state = useTreeState()
   const t = useT()
   const [reveal, setReveal] = useState<ScanRevealState | null>(null)
-  const groveInteractive = canInteractWithGrove(reveal)
+  const treeInteractive = canInteractWithTree(reveal)
   const modeRef = useRef(state.mode)
   const pendingRevealActionRef = useRef<(() => void) | null>(null)
   modeRef.current = state.mode
@@ -133,9 +133,9 @@ export function App() {
         )}
       </div>
       <footer
-        className={`chrome${groveInteractive ? '' : ' is-locked'}`}
-        inert={!groveInteractive}
-        aria-disabled={!groveInteractive}
+        className={`chrome${treeInteractive ? '' : ' is-locked'}`}
+        inert={!treeInteractive}
+        aria-disabled={!treeInteractive}
       >
         <div className="top-row">
           <ModeBar mode={state.mode} onChange={onModeChange} />

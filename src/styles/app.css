@@ -43,7 +43,7 @@ body,
 }
 
 /* Camera hint sits on the bench under the tree row so it never covers
-   the grove. Still a button: tap toggles overhead the same as the canvas. */
+   the scene. Still a button: tap toggles overhead the same as the canvas. */
 .hint-pill {
   align-self: center;
   border: 0;
@@ -473,7 +473,7 @@ a:focus-visible {
   outline: none;
 }
 
-/* Wide screens: the bench becomes a side panel and the grove takes the rest. */
+/* Wide screens: the bench becomes a side panel and the scene takes the rest. */
 @media (min-width: 900px) {
   .app {
     grid-template-columns: minmax(0, 1fr) 400px;

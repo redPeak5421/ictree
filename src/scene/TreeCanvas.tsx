@@ -61,7 +61,7 @@ function fadeGroup(group: Group | null, opacity: number, flatten: number) {
 }
 
 /**
- * Same camera-led conversion as the plant grove: mix follows pitch, so a
+ * Same camera-led conversion as the plant scene: mix follows pitch, so a
  * tap to overhead does not swap the tree for tiles before the view turns.
  */
 function InkDissolve({
@@ -293,7 +293,7 @@ export function TreeCanvas({
       onCreated={({ gl }) => {
         gl.setClearColor(bg, 1)
         gl.toneMapping = NoToneMapping
-        gl.domElement.setAttribute('data-grove-canvas', '')
+        gl.domElement.setAttribute('data-ictree-canvas', '')
       }}
       onPointerDown={down}
       onPointerMove={move}

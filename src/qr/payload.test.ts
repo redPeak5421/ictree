@@ -46,7 +46,7 @@ describe('defaultPayload', () => {
 
   it('uses the deployed origin', () => {
     expect(defaultPayload('https://ictree.example.workers.dev')).toBe('https://ictree.example.workers.dev/')
-    expect(defaultPayload('https://grove.example.com/')).toBe('https://grove.example.com/')
+    expect(defaultPayload('https://ictree.example.com/')).toBe('https://ictree.example.com/')
   })
 })
 
