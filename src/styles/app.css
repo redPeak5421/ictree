@@ -180,11 +180,6 @@ body,
   color: var(--muted);
 }
 
-.field-row.is-note {
-  justify-content: flex-end;
-  gap: 10px;
-}
-
 .field-icon {
   flex: none;
 }
@@ -385,8 +380,7 @@ body,
   opacity: 1;
 }
 
-.leaf-fruit,
-.leaf-blossom {
+.leaf-fruit {
   fill: var(--leaf-accent);
   stroke: var(--panel);
   stroke-width: 1.2;
@@ -417,21 +411,6 @@ body,
 }
 
 .scan-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.action-btn {
-  height: 42px;
-  border: 0;
-  border-radius: var(--radius-input);
-  background: var(--selected);
-  color: var(--ink);
-  font: 500 14px/1 var(--font);
-  cursor: pointer;
-}
-
-.action-btn:disabled {
   opacity: 0.6;
   cursor: default;
 }

@@ -14,7 +14,7 @@ Do not reopen closed product decisions below unless the user asks.
 
 Type a URL in **Create** (optional password), grow a tree, and share it. **Reveal** imports a still/loop or a locked `?u=` token, then locally scans the live mosaic. Encrypted content is never readable from metadata or the address bar alone.
 
-- Live QR payload is the URL **or** a `gv1.` AES-GCM token — never the share-search string.
+- Live QR payload is the URL **or** a `gv2.` AES-GCM token — never the share-search string.
 - Share files stay visually clean. Payload lives in **container metadata only**.
 - Species is a user choice (`t=`): Cherry / Apple / Pine / Willow / Maple.
 - Side view should read as a tree/hedge; overhead remains a scannable QR via luma pinning.
@@ -122,7 +122,7 @@ Vite has no custom `server.port`. Bind may be IPv6-only (`http://localhost:5199/
 | --- | --- |
 | `src/app/useTreeState.ts` | Wrap, history, `applyShareState` (always Reveal; locked URL stays `DEFAULT_PAYLOAD`) |
 | `src/share/params.ts` | `ShareState = { url, season, tree, locked, mode }` |
-| `src/share/secret.ts` | `gv1.` + PBKDF2-SHA256 120000, salt 16, IV 12, `MAX_WRAPPED = 280` |
+| `src/share/secret.ts` | `gv2.` + PBKDF2-SHA256 120000, salt 16, IV 12, `MAX_WRAP_VERSION = 10` |
 | `src/share/scanTree.ts` | `rasterQr` + jsQR `attemptBoth` |
 | `src/share/stillEncode.ts` | `GRV1` frame + CRC only (no pixel embed) |
 | `src/share/containerMeta.ts` | PNG/GIF/JPEG container read/write; `pickHiddenSearch` |
@@ -156,7 +156,7 @@ Colocate tests next to the module. Style is `describe` / `it` / `expect` with in
 
 **Contracts to keep green:**
 
-- Wrap hides the URL; wrong password → `null`; scan of a locked tree returns the `gv1.` token, not the plaintext.
+- Wrap hides the URL; wrong password → `null`; scan of a locked tree returns the `gv2.` token, not the plaintext.
 - `LOOP_DELAY_MS >= 160` (source is 180).
 - Share params: `u/s/t` plus `e`/`m`; leftover `p=` still resolves a tree.
 - Import is metadata-only; empty / plain / `> 12MB` files throw `STILL_ERROR`.
@@ -166,7 +166,7 @@ Colocate tests next to the module. Style is `describe` / `it` / `expect` with in
 
 After **share/crypto**: `src/share/*.test.ts`. After **scene/scanability**: `raster.test.ts`, `scanTree.test.ts`, `contrast.test.ts`, `tree.test.ts`, `grassLayout.test.ts`, `treeProjection.test.ts` (slow), then the full suite.
 
-Live check: Create wrap → address bar shows `gv1.` + `e=1`; Reveal has no URL box; Scan without password asks for it; Scan with password yields the URL. Overhead should decode; side view should not look like a flat QR.
+Live check: Create wrap → address bar shows `gv2.` + `e=1`; Reveal has no URL box; Scan without password asks for it; Scan with password yields the URL. Overhead should decode; side view should not look like a flat QR.
 
 ## Hard Constraints
 

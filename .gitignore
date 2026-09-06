@@ -8,3 +8,7 @@ docs/
 pnpm-lock.yaml
 pnpm-workspace.yaml
 playground/
+.env
+.env.*
+.wrangler/
+.dev.vars

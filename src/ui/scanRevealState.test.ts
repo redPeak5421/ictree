@@ -82,10 +82,10 @@ describe('scan reveal lifecycle', () => {
   })
 
   it('settles without changing the reveal text', () => {
-    const started = startScanReveal('gv1.literal-token')
+    const started = startScanReveal('gv2.literal-token')
 
     expect(settleScanReveal(started)).toEqual({
-      text: 'gv1.literal-token',
+      text: 'gv2.literal-token',
       closing: false,
       materializing: true,
       settled: true,
