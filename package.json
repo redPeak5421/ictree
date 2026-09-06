@@ -2,6 +2,13 @@
   "name": "ictree",
   "private": true,
   "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": "redPeak5421",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/redPeak5421/ictree.git"
+  },
+  "homepage": "https://github.com/redPeak5421/ictree",
   "type": "module",
   "scripts": {
     "dev": "vite",
