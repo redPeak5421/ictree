@@ -1,5 +1,7 @@
 # ictree
 
+[English](README.md) · [中文](README.zh-CN.md)
+
 A URL becomes a QR module grid. The 3D tree **is** that grid from overhead.
 
 Type a URL (optional password), grow a tree, and share it. Open a still or loop to reveal the payload in the browser — encrypted content is never readable from the address bar or from image pixels alone.
