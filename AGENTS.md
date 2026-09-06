@@ -66,7 +66,7 @@ Import (`readStillFile`) reads those channels only. Social JPEG that strips meta
 | `src/styles/` | `tokens.css` + `app.css` (no Tailwind) |
 | `.omc/` | Local agent notes. Gitignored; never commit machine paths or session logs |
 
-No `scripts/` directory. No root README.
+No `scripts/` directory. Keep the root README factual; do not copy ICQR / Enzo branding.
 
 ## Development Commands
 
