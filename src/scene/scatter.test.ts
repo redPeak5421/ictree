@@ -75,10 +75,10 @@ describe('apple fruit scatter', () => {
     expect(meanRadius(hosts)).toBeGreaterThan(meanRadius(onePerModule(apple.filler)))
   })
 
-  it('keeps apples large enough to read even when the host sits near a module edge', () => {
-    expect(ornamentScale({ position: [0.42, 4, 0.42], scale: 0.9 }, true)).toBeGreaterThanOrEqual(1.12)
-    expect(ornamentScale({ position: [0, 4, 0], scale: 1.4 }, true)).toBeGreaterThan(1.2)
-    expect(ornamentScale({ position: [0, 4, 0], scale: 1.2 }, false)).toBeLessThan(0.6)
+  it('keeps apples large enough to read from the side', () => {
+    expect(ornamentScale({ scale: 0.9 }, true)).toBeGreaterThanOrEqual(1.12)
+    expect(ornamentScale({ scale: 1.4 }, true)).toBeGreaterThan(1.2)
+    expect(ornamentScale({ scale: 1.2 }, false)).toBeLessThan(0.6)
   })
 
   it('picks the same hanging apples for the same crown', () => {

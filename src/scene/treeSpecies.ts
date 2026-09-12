@@ -19,7 +19,7 @@ export const TREE_KINDS: readonly TreeKind[] = [
   { id: 'maple', label: 'Maple' },
 ]
 
-/** Pine stays in the type union and old `t=pine` links remap to cherry. The picker hides it: canopy plates still read as leaf sheets, not needles. */
+/** Pine stays in the type union and tests; the live picker and scene skip it. */
 export const PINE_ENABLED = false
 
 export const TREE_IDS: readonly TreeSpecies[] = TREE_KINDS.map((kind) => kind.id)

@@ -243,8 +243,8 @@ export function pickFruitOrnaments<T extends FruitHost>(filler: readonly T[]): T
   })
 }
 
-/** Fruit hangs below the leaf; blossoms sit on it. Apples stay readable near a module edge. */
-export function ornamentScale(leaf: Pick<FruitHost, 'position' | 'scale'>, fruit: boolean): number {
+/** Fruit hangs below the leaf; blossoms sit on it. */
+export function ornamentScale(leaf: Pick<FruitHost, 'scale'>, fruit: boolean): number {
   if (!fruit) return Math.min(leaf.scale, 1.2) * 0.42
   const raw = Math.min(leaf.scale, 1.7) * 1.05
   return Math.min(1.55, Math.max(1.12, raw))

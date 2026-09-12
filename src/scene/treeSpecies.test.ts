@@ -14,7 +14,6 @@ import {
   leafShapeFor,
   plantableKinds,
   plantableSpecies,
-  PINE_ENABLED,
   profileFor,
   resolveTreeChoice,
   TREE_KINDS,
@@ -70,7 +69,6 @@ describe('tree species selection', () => {
   it('offers the plantable trees in picker order and hides pine', () => {
     expect(TREE_KINDS.map((kind) => kind.id)).toEqual(['cherry', 'apple', 'pine', 'willow', 'maple'])
     expect(plantableKinds().map((kind) => kind.id)).toEqual(['cherry', 'apple', 'willow', 'maple'])
-    expect(PINE_ENABLED).toBe(false)
     expect(plantableSpecies('pine')).toBe('cherry')
     expect(TREE_KINDS.every((kind) => kind.label.length > 0)).toBe(true)
     expect(isTreeSpecies('maple')).toBe(true)

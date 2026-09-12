@@ -177,7 +177,6 @@ describe('buildTree', () => {
     // Airy stacks: enough crown from the side, not a solid hedge mound.
     expect(tree.filler.length).toBeGreaterThan(canopyModules * 12)
     expect(tree.filler.length).toBeLessThan(canopyModules * 32)
-    expect(tree.filler.length).toBeLessThanOrEqual(canopyModules * 70 + tree.branches.length * 3 + 16)
     const again = buildTree(grid, hashString(grid.payload), choice)
     expect(again.filler.length).toBe(tree.filler.length)
     expect(again.filler[0]).toEqual(tree.filler[0])

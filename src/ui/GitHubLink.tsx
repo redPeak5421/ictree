@@ -1,7 +1,7 @@
 import { useT } from '../i18n/useLocale'
 import { GitHubIcon } from './icons'
 
-export const GITHUB_REPO_URL = 'https://github.com/redPeak5421/ictree'
+const GITHUB_REPO_URL = 'https://github.com/redPeak5421/ictree'
 
 export function GitHubLink() {
   const t = useT()
