@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Color, InstancedMesh, Mesh, MeshBasicMaterial, Object3D, type Texture } from 'three'
+import { Color, Group, InstancedMesh, Mesh, MeshBasicMaterial, Object3D, type Texture } from 'three'
 import { lumaOfHex, toLumaHex } from '../qr/contrast'
 import type { FinderCarpetInstance, FinderVegetationInstance } from './grassLayout'
 import { barkTexture, carpetTexture, fruitTexture, leafTexture, petalTexture, vegetationTexture } from './leafTexture'
@@ -14,10 +14,11 @@ import {
   type Season,
 } from './palettes'
 import type { SceneRef } from './sceneState'
-import { pickFruitOrnaments } from './scatter'
+import { FRUIT_HANG, ornamentScale, pickFruitOrnaments } from './scatter'
 import type { FillerInstance, LeafInstance, TreeRig } from './tree'
 import { branchTones, leafLuma } from './treeAppearance'
 import { PINE_ENABLED, type TreeSpecies } from './treeSpecies'
+import { growScaleY } from './view'
 import { canopyWindFade, windBend, windShift, type WindBend } from './wind'
 
 const dummy = new Object3D()
@@ -97,16 +98,6 @@ function poseWindGroup(
   }
 }
 
-/** Fruit hangs below the leaf; blossoms sit on it. Size stays inside the module. */
-function ornamentScale(leaf: OrnamentHost, fruit: boolean): number {
-  const ox = leaf.position[0] - Math.round(leaf.position[0])
-  const oz = leaf.position[2] - Math.round(leaf.position[2])
-  const room = (0.5 - Math.max(Math.abs(ox), Math.abs(oz))) / 0.32
-  return fruit
-    ? Math.min(room, Math.max(0.75, Math.min(leaf.scale, 1.6) * 0.75) * 1.1)
-    : Math.min(leaf.scale, 1.2) * 0.42
-}
-
 /** Canopy and QR-critical corner vegetation. Leaves rustle in side-view wind. */
 export function TreeFoliage({
   rig,
@@ -123,6 +114,7 @@ export function TreeFoliage({
   shed?: boolean
   reduced?: boolean
 }) {
+  const growRef = useRef<Group>(null)
   const trunkRef = useRef<Mesh>(null)
   const limbRef = useRef<InstancedMesh>(null)
   const leafRefs = useRef<Partial<Record<LeafShape, InstancedMesh | null>>>({})
@@ -270,7 +262,7 @@ export function TreeFoliage({
     if (ornaments) {
       const fruit = ornamentKind === 'fruit'
       groups.ornaments.forEach((leaf, index) => {
-        dummy.position.set(leaf.position[0], leaf.position[1] + (fruit ? -0.14 : 0.05), leaf.position[2])
+        dummy.position.set(leaf.position[0], leaf.position[1] + (fruit ? -FRUIT_HANG : 0.05), leaf.position[2])
         dummy.rotation.set(fruit ? -0.25 : leaf.euler[0], leaf.euler[1], 0, 'YXZ')
         dummy.scale.setScalar(ornamentScale(leaf, fruit))
         dummy.updateMatrix()
@@ -282,7 +274,9 @@ export function TreeFoliage({
   }, [rig, groups, ornamentKind, limbs, shed])
 
   useFrame(({ clock }) => {
-    const { colors, pitch } = scene.current
+    const { colors, pitch, grow } = scene.current
+    const grown = growRef.current
+    if (grown) grown.scale.set(1, growScaleY(grow), 1)
     const t = clock.elapsedTime
     const fade = reduced || shed ? 0 : canopyWindFade(pitch)
     const gust = tree === 'willow' ? 1.45 : 1
@@ -308,7 +302,7 @@ export function TreeFoliage({
       groups.ornaments.forEach((leaf, index) => {
         const bend = fade === 0 ? REST_WIND : windBend(t, leaf.position[0], leaf.position[2])
         const [dx, dz] = windShift(bend.lean * gust, leaf.position[1])
-        dummy.position.set(leaf.position[0] + dx, leaf.position[1] + (fruit ? -0.14 : 0.05), leaf.position[2] + dz)
+        dummy.position.set(leaf.position[0] + dx, leaf.position[1] + (fruit ? -FRUIT_HANG : 0.05), leaf.position[2] + dz)
         dummy.rotation.set(
           (fruit ? -0.25 : leaf.euler[0]) + bend.tilt * gust,
           leaf.euler[1] + bend.twist * gust,
@@ -464,33 +458,56 @@ export function TreeFoliage({
 
   return (
     <group>
-      {bole && (
-        <mesh ref={trunkRef} position={[0, bole.y, 0]}>
-          <cylinderGeometry args={[bole.rTop, bole.rBase, bole.h, 24]} />
-          <meshBasicMaterial map={barkMap} />
-        </mesh>
-      )}
-      {limbs.length > 0 && (
-        <instancedMesh ref={limbRef} args={[undefined, undefined, limbs.length]} key={`l${limbs.length}`} frustumCulled={false}>
-          <cylinderGeometry args={[0.88, 1, 1, 10]} />
-          <meshBasicMaterial map={barkMap} />
-        </instancedMesh>
-      )}
-      {/* Hide — do not unmount — while LeafGather flies the same instances. */}
-      <group visible={!shed}>
-        {LIVE_SHAPES.map((shape) => (
-          <instancedMesh
-            key={`${shape}${groups.leaves[shape].length}`}
-            ref={(mesh) => {
-              leafRefs.current[shape] = mesh
-            }}
-            args={[undefined, undefined, Math.max(1, groups.leaves[shape].length)]}
-            frustumCulled={false}
-          >
-            <planeGeometry args={[1, 1]} />
-            {cutout(leafMap(shape))}
+      <group ref={growRef}>
+        {bole && (
+          <mesh ref={trunkRef} position={[0, bole.y, 0]}>
+            <cylinderGeometry args={[bole.rTop, bole.rBase, bole.h, 24]} />
+            <meshBasicMaterial map={barkMap} />
+          </mesh>
+        )}
+        {limbs.length > 0 && (
+          <instancedMesh ref={limbRef} args={[undefined, undefined, limbs.length]} key={`l${limbs.length}`} frustumCulled={false}>
+            <cylinderGeometry args={[0.88, 1, 1, 10]} />
+            <meshBasicMaterial map={barkMap} />
           </instancedMesh>
-        ))}
+        )}
+        {/* Hide — do not unmount — while LeafGather flies the same instances. */}
+        <group visible={!shed}>
+          {LIVE_SHAPES.map((shape) => (
+            <instancedMesh
+              key={`${shape}${groups.leaves[shape].length}`}
+              ref={(mesh) => {
+                leafRefs.current[shape] = mesh
+              }}
+              args={[undefined, undefined, Math.max(1, groups.leaves[shape].length)]}
+              frustumCulled={false}
+            >
+              <planeGeometry args={[1, 1]} />
+              {cutout(leafMap(shape))}
+            </instancedMesh>
+          ))}
+        </group>
+        <group visible={!shed}>
+          {LIVE_SHAPES.filter((shape) => groups.filler[shape]?.length).map((shape) => (
+            <instancedMesh
+              key={`f${shape}${groups.filler[shape].length}`}
+              ref={(mesh) => {
+                fillerRefs.current[shape] = mesh
+              }}
+              args={[undefined, undefined, groups.filler[shape].length]}
+              frustumCulled={false}
+            >
+              <planeGeometry args={[1, 1]} />
+              <meshBasicMaterial map={fillerMap(shape)} transparent alphaTest={0.42} side={2} />
+            </instancedMesh>
+          ))}
+          {groups.ornaments.length > 0 && (
+            <instancedMesh ref={ornamentRef} args={[undefined, undefined, groups.ornaments.length]} key={`or${groups.ornaments.length}${ornamentKind}`} frustumCulled={false}>
+              <planeGeometry args={[1, 1]} />
+              <meshBasicMaterial map={ornamentKind === 'fruit' ? fruitMap : blossomMap} transparent alphaTest={0.42} side={2} />
+            </instancedMesh>
+          )}
+        </group>
       </group>
       <instancedMesh ref={finderBladeRef} args={[undefined, undefined, groups.finder.blade.length]} key={`fb${groups.finder.blade.length}`} frustumCulled={false}>
         <planeGeometry args={[1, 1]} />
@@ -504,27 +521,6 @@ export function TreeFoliage({
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={carpetMap} transparent alphaTest={0.42} side={2} />
       </instancedMesh>
-      <group visible={!shed}>
-        {LIVE_SHAPES.filter((shape) => groups.filler[shape]?.length).map((shape) => (
-          <instancedMesh
-            key={`f${shape}${groups.filler[shape].length}`}
-            ref={(mesh) => {
-              fillerRefs.current[shape] = mesh
-            }}
-            args={[undefined, undefined, groups.filler[shape].length]}
-            frustumCulled={false}
-          >
-            <planeGeometry args={[1, 1]} />
-            <meshBasicMaterial map={fillerMap(shape)} transparent alphaTest={0.42} side={2} />
-          </instancedMesh>
-        ))}
-        {groups.ornaments.length > 0 && (
-          <instancedMesh ref={ornamentRef} args={[undefined, undefined, groups.ornaments.length]} key={`or${groups.ornaments.length}${ornamentKind}`} frustumCulled={false}>
-            <planeGeometry args={[1, 1]} />
-            <meshBasicMaterial map={ornamentKind === 'fruit' ? fruitMap : blossomMap} transparent alphaTest={0.42} side={2} />
-          </instancedMesh>
-        )}
-      </group>
     </group>
   )
 }

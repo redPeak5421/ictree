@@ -71,6 +71,8 @@ export function useTreeState() {
     zoom: 1,
     zoomTarget: null,
     inkMix: 0,
+    grow: 0,
+    growTarget: 1,
   })
 
   useEffect(() => {

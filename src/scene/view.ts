@@ -5,6 +5,10 @@ export const OVERHEAD = Math.PI / 2
 /** The camera eases to a tapped view over roughly this long. */
 export const VIEW_MS = 900
 export const SEASON_MS = 280
+/** Side-view plant-in. Snaps finished before the camera reaches the code. */
+export const GROW_MS = 1100
+/** Same band where weather starts to fade — a half-grown canopy must not be the mosaic. */
+export const GROW_SNAP_PITCH = 1.2
 
 export function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
@@ -72,6 +76,20 @@ export const TILE_SOLID = 1
 export function tileEdge(mix: number, solidity: number): number {
   const settled = TILE_GAPPED + (TILE_SOLID - TILE_GAPPED) * solidity
   return TILE_LOOSE + (settled - TILE_LOOSE) * mix
+}
+
+export function stepGrow(current: number, target: number, dt: number, instant = false): number {
+  if (instant) return target
+  const span = target - current
+  if (!Number.isFinite(span) || Math.abs(span) < 0.002) return target
+  const next = current + Math.sign(span) * (Number.isFinite(dt) && dt > 0 ? dt : 0) * (1000 / GROW_MS)
+  if ((target - current) * (target - next) <= 0) return target
+  return next
+}
+
+/** Vertical scale of the living crown. Finder grass stays full-size. */
+export function growScaleY(grow: number): number {
+  return 0.16 + 0.84 * easeInOutCubic(Math.min(1, Math.max(0, grow)))
 }
 
 export function plantInkOpacity(mix: number): number {

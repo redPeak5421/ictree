@@ -5,6 +5,7 @@ import type { ModuleGrid } from '../qr/types'
 import { claimRenderedCameraState, OrbitCamera } from './camera'
 import { Grass } from './grass'
 import { Ground } from './ground'
+import { LockMark } from './LockMark'
 import { LeafGather } from './LeafGatherView'
 import { applyDrag, applyZoom, SNAP_PITCH, TAP_SLOP, wheelZoomFactor } from './orbit'
 import { Particles } from './particles/Particles'
@@ -15,7 +16,16 @@ import { hashString } from './hash'
 import type { Season } from './palettes'
 import { buildTree, islandExtent } from './tree'
 import { plantableSpecies, resolveTreeChoice, type TreeSpecies } from './treeSpecies'
-import { OVERHEAD, blockInkOpacity, inkMixTarget, plantInkOpacity, stepInkMix, squareYaw } from './view'
+import {
+  GROW_SNAP_PITCH,
+  OVERHEAD,
+  blockInkOpacity,
+  inkMixTarget,
+  plantInkOpacity,
+  stepGrow,
+  stepInkMix,
+  squareYaw,
+} from './view'
 import type { InkStyle } from '../share/params'
 import type { ScanRevealState } from '../ui/scanRevealState'
 
@@ -34,6 +44,23 @@ interface Pointer {
 const FLICK_MS = 80
 /** Longer than this between down and up is a hold, not a tap. */
 const TAP_MS = 600
+
+function GrowDriver({
+  scene,
+  reduced,
+  snap,
+}: {
+  scene: SceneRef
+  reduced: boolean
+  snap: boolean
+}) {
+  useFrame((_, dt) => {
+    const state = scene.current
+    const instant = reduced || snap || state.pitch >= GROW_SNAP_PITCH
+    state.grow = stepGrow(state.grow, state.growTarget, Math.min(dt, 0.05), instant)
+  })
+  return null
+}
 
 function fadeGroup(group: Group | null, opacity: number, flatten: number) {
   if (!group) return
@@ -114,6 +141,7 @@ export function TreeCanvas({
   onRevealClosed,
   onToggle,
   onOverhead,
+  locked = false,
 }: {
   grid: ModuleGrid
   tree: TreeSpecies
@@ -122,6 +150,7 @@ export function TreeCanvas({
   scene: SceneRef
   reduced: boolean
   ink: InkStyle
+  locked?: boolean
   reveal: ScanRevealState | null
   onRevealTextReveal: () => void
   onRevealSettled: () => void
@@ -143,6 +172,11 @@ export function TreeCanvas({
   const [grabbing, setGrabbing] = useState(false)
   const host = useRef<HTMLCanvasElement | null>(null)
   const revealActive = reveal !== null
+
+  useLayoutEffect(() => {
+    scene.current.grow = reduced ? 1 : 0
+    scene.current.growTarget = 1
+  }, [grid.payload, tree, reduced, scene])
 
   useLayoutEffect(() => {
     if (!revealActive) return
@@ -303,6 +337,7 @@ export function TreeCanvas({
       <color attach="background" args={[bg]} />
       <hemisphereLight args={['#fff6ea', '#a89f93', 1.25]} />
       <directionalLight position={[island, island * 1.4, island * 0.6]} intensity={0.55} />
+      <GrowDriver scene={scene} reduced={reduced} snap={revealActive} />
       <OrbitCamera
         scene={scene}
         island={island}
@@ -313,6 +348,15 @@ export function TreeCanvas({
         onOverhead={onOverhead}
       />
       <Ground grid={grid} rig={rig} scene={scene} />
+      <LockMark
+        scene={scene}
+        locked={locked && !revealActive}
+        height={Math.max(1.6, rig.crownTop * 0.18)}
+        radius={Math.max(
+          0.35,
+          ...rig.branches.filter((branch) => branch.shade === 0).map((branch) => branch.scale[0]),
+        )}
+      />
       {ink !== 'plants' ? (
         <InkDissolve
           scene={scene}

@@ -4,6 +4,7 @@ import { hashString, mulberry32 } from './hash'
 import {
   FRUIT_ORNAMENT_COUNT,
   onePerModule,
+  ornamentScale,
   pickFruitOrnaments,
   scatterEven,
   scatterRandom,
@@ -60,7 +61,7 @@ describe('apple fruit scatter', () => {
     expect(apple.filler.some((leaf) => leaf.shape === 'appleHeap')).toBe(false)
   })
 
-  it('hangs thirty-six apples at random, far fewer than the leaves', () => {
+  it('hangs a fixed handful of apples on the outer crown, far fewer than the leaves', () => {
     const hosts = pickFruitOrnaments(apple.filler)
     const keys = hosts.map((leaf) => `${Math.round(leaf.position[0])},${Math.round(leaf.position[2])}`)
     expect(new Set(keys).size).toBe(hosts.length)
@@ -68,7 +69,16 @@ describe('apple fruit scatter', () => {
     expect(hosts.length).toBeLessThan(apple.leaves.length / 20)
     expect(hosts.length).toBeLessThan(apple.filler.length / 40)
     expect(onePerModule(apple.filler).length).toBeGreaterThan(FRUIT_ORNAMENT_COUNT)
-    expect(nearest(hosts.map((leaf) => ({ x: leaf.position[0], z: leaf.position[2] })))).toBeGreaterThanOrEqual(1.2)
+    expect(nearest(hosts.map((leaf) => ({ x: leaf.position[0], z: leaf.position[2] })))).toBeGreaterThanOrEqual(1.05)
+    const meanRadius = (items: { position: [number, number, number] }[]) =>
+      items.reduce((sum, item) => sum + Math.hypot(item.position[0], item.position[2]), 0) / items.length
+    expect(meanRadius(hosts)).toBeGreaterThan(meanRadius(onePerModule(apple.filler)))
+  })
+
+  it('keeps apples large enough to read even when the host sits near a module edge', () => {
+    expect(ornamentScale({ position: [0.42, 4, 0.42], scale: 0.9 }, true)).toBeGreaterThanOrEqual(1.12)
+    expect(ornamentScale({ position: [0, 4, 0], scale: 1.4 }, true)).toBeGreaterThan(1.2)
+    expect(ornamentScale({ position: [0, 4, 0], scale: 1.2 }, false)).toBeLessThan(0.6)
   })
 
   it('picks the same hanging apples for the same crown', () => {
