@@ -12,6 +12,9 @@ import {
   isGrassCell,
   isTreeSpecies,
   leafShapeFor,
+  plantableKinds,
+  plantableSpecies,
+  PINE_ENABLED,
   profileFor,
   resolveTreeChoice,
   TREE_KINDS,
@@ -66,6 +69,9 @@ function metrics(points: CrownPoint[], size: number): Metrics {
 describe('tree species selection', () => {
   it('offers exactly the five plantable trees, in picker order', () => {
     expect(TREE_KINDS.map((kind) => kind.id)).toEqual(['cherry', 'apple', 'pine', 'willow', 'maple'])
+    expect(plantableKinds().map((kind) => kind.id)).toEqual(['cherry', 'apple', 'pine', 'willow', 'maple'])
+    expect(PINE_ENABLED).toBe(true)
+    expect(plantableSpecies('pine')).toBe('pine')
     expect(TREE_KINDS.every((kind) => kind.label.length > 0)).toBe(true)
     expect(isTreeSpecies('maple')).toBe(true)
     expect(isTreeSpecies('banana')).toBe(false)

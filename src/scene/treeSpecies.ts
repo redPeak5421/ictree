@@ -19,8 +19,8 @@ export const TREE_KINDS: readonly TreeKind[] = [
   { id: 'maple', label: 'Maple' },
 ]
 
-/** Pine stays in the type union and tests; the live picker and scene skip it. */
-export const PINE_ENABLED = false
+/** Pine is a live picker choice. The flag stays so tests can hide it if needed. */
+export const PINE_ENABLED = true
 
 export const TREE_IDS: readonly TreeSpecies[] = TREE_KINDS.map((kind) => kind.id)
 

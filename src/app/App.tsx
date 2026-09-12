@@ -6,6 +6,7 @@ import type { AppMode } from '../share/params'
 import { HintPill } from '../ui/HintPill'
 import { InkStyleBar } from '../ui/InkStyleBar'
 import { LanguageSelect } from '../ui/LanguageSelect'
+import { MuteButton } from '../ui/MuteButton'
 import { ModeBar } from '../ui/ModeBar'
 import { PasswordField } from '../ui/PasswordField'
 import { QrFallback } from '../ui/QrFallback'
@@ -112,6 +113,7 @@ export function App() {
             reduced={state.reduced}
             rain={state.rain}
             ink={state.ink}
+            locked={state.locked}
             reveal={reveal}
             onRevealTextReveal={onRevealTextReveal}
             onRevealSettled={onRevealSettled}
@@ -141,6 +143,7 @@ export function App() {
           <ModeBar mode={state.mode} onChange={onModeChange} />
           <div className="top-tools">
             <LanguageSelect />
+            <MuteButton muted={state.muted} onToggle={state.toggleMuted} />
             <WeatherButton rain={state.rain} onToggle={state.toggleRain} />
           </div>
         </div>

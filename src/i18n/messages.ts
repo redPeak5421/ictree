@@ -43,6 +43,8 @@ export interface Messages {
   downloadQr: string
   saveStill: string
   saveLoop: string
+  savingStill: string
+  savingLoop: string
   openStill: string
   shareOnX: string
   facebook: string
@@ -90,6 +92,8 @@ const en: Messages = {
   downloadQr: 'Download QR',
   saveStill: 'Save still',
   saveLoop: 'Save loop',
+  savingStill: 'Saving still…',
+  savingLoop: 'Orbiting the tree…',
   openStill: 'Open image',
   shareOnX: 'Share on X',
   facebook: 'Facebook',
@@ -142,6 +146,8 @@ const zhCN: Messages = {
   downloadQr: '下载二维码',
   saveStill: '保存静态图',
   saveLoop: '保存动图',
+  savingStill: '正在保存静态图…',
+  savingLoop: '正在绕树拍照…',
   openStill: '打开图片',
   shareOnX: '分享到 X',
   facebook: 'Facebook',
@@ -194,6 +200,8 @@ const zhTW: Messages = {
   downloadQr: '下載 QR Code',
   saveStill: '儲存靜態圖',
   saveLoop: '儲存動圖',
+  savingStill: '正在儲存靜態圖…',
+  savingLoop: '正在繞樹拍照…',
   openStill: '開啟圖片',
   shareOnX: '分享到 X',
   facebook: 'Facebook',
@@ -246,6 +254,8 @@ const ja: Messages = {
   downloadQr: 'QRをダウンロード',
   saveStill: '静止画を保存',
   saveLoop: 'ループ動画を保存',
+  savingStill: '静止画を保存中…',
+  savingLoop: '木のまわりを撮影中…',
   openStill: '画像を開く',
   shareOnX: 'Xで共有',
   facebook: 'Facebook',
@@ -298,6 +308,8 @@ const ru: Messages = {
   downloadQr: 'Скачать QR-код',
   saveStill: 'Сохранить кадр',
   saveLoop: 'Сохранить анимацию',
+  savingStill: 'Сохраняем кадр…',
+  savingLoop: 'Обходим дерево…',
   openStill: 'Открыть изображение',
   shareOnX: 'Поделиться в X',
   facebook: 'Facebook',
@@ -350,6 +362,8 @@ const fr: Messages = {
   downloadQr: 'Télécharger le QR',
   saveStill: 'Enregistrer l\u2019image',
   saveLoop: 'Enregistrer la boucle',
+  savingStill: 'Enregistrement…',
+  savingLoop: 'Tour de l\u2019arbre…',
   openStill: 'Ouvrir une image',
   shareOnX: 'Partager sur X',
   facebook: 'Facebook',

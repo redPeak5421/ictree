@@ -39,3 +39,21 @@ export function RainIcon() {
     </svg>
   )
 }
+
+export function SoundIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 10v4h3.2L13 18V6L8.2 10H5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M16.2 9.2a3.2 3.2 0 0 1 0 5.6M18.4 7a6 6 0 0 1 0 10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function MuteIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 10v4h3.2L13 18V6L8.2 10H5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M17 10l4 4M21 10l-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
