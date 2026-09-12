@@ -81,7 +81,8 @@ export function LockMark({
     lockMats.current.push(mat)
   }
 
-  const lockY = Math.min(1.35, Math.max(0.85, height * 0.55))
+  // Sit on the pale bole, below hanging canopy, so a side view can see it.
+  const lockY = Math.min(0.78, Math.max(0.58, height * 0.22))
 
   return (
     <group ref={root}>
@@ -99,7 +100,7 @@ export function LockMark({
           />
         </mesh>
       ))}
-      <group position={[0, lockY, 0.55]} scale={1.15}>
+      <group position={[0, lockY, 0.62]} scale={1.55}>
         <mesh position={[0, 0.02, 0]}>
           <boxGeometry args={[0.38, 0.3, 0.14]} />
           <meshBasicMaterial ref={bindLock} color={LOCK_HEX} transparent depthWrite={false} />
