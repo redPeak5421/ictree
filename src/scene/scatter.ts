@@ -21,8 +21,10 @@ export interface ScatterOptions {
   bands?: number
 }
 
-export const FRUIT_ORNAMENT_COUNT = 36
-export const FRUIT_ORNAMENT_GAP = 1.8
+export const FRUIT_ORNAMENT_COUNT = 52
+export const FRUIT_ORNAMENT_GAP = 1.55
+/** How far an apple drops below its host leaf. */
+export const FRUIT_HANG = 0.26
 
 function shuffleInPlace<T>(items: T[], rng: () => number): T[] {
   for (let i = items.length - 1; i > 0; i--) {
@@ -196,12 +198,12 @@ export function onePerModule<T extends FruitHost>(filler: readonly T[]): T[] {
   for (const group of groups.values()) {
     const lo = Math.min(...group.map((leaf) => leaf.position[1]))
     const hi = Math.max(...group.map((leaf) => leaf.position[1]))
-    const mid = (lo + hi) / 2
+    const hang = lo + (hi - lo) * 0.38
     let best = group[0]!
     let score = Infinity
     for (const leaf of group) {
       const radius = Math.hypot(leaf.position[0], leaf.position[2])
-      const next = Math.abs(leaf.position[1] - mid) - radius * 0.15
+      const next = Math.abs(leaf.position[1] - hang) - radius * 0.35
       if (next < score) {
         score = next
         best = leaf
@@ -224,14 +226,26 @@ function rngFromHosts(hosts: readonly FruitHost[]): () => number {
 
 /**
  * Hanging apples: a fixed count, one per chosen module, shuffled across the
- * crown. Fruit-module columns and a 14 % coin-flip on every filler both
- * painted the tree red; this hangs thirty-six single fruits instead.
+ * outer crown so they sit on the silhouette instead of inside the foliage.
  */
 export function pickFruitOrnaments<T extends FruitHost>(filler: readonly T[]): T[] {
   const hosts = onePerModule(filler)
-  return scatterRandom(hosts, (leaf) => ({ x: leaf.position[0], z: leaf.position[2], y: leaf.position[1] }), rngFromHosts(hosts), {
+  const ranked = hosts
+    .map((host) => ({ host, radius: Math.hypot(host.position[0], host.position[2]) }))
+    .sort((a, b) => b.radius - a.radius)
+  const pool = ranked
+    .slice(0, Math.max(FRUIT_ORNAMENT_COUNT * 2, Math.ceil(ranked.length * 0.6)))
+    .map((item) => item.host)
+  return scatterRandom(pool, (leaf) => ({ x: leaf.position[0], z: leaf.position[2], y: leaf.position[1] }), rngFromHosts(hosts), {
     count: FRUIT_ORNAMENT_COUNT,
     minDist: FRUIT_ORNAMENT_GAP,
-    minFloor: 1.2,
+    minFloor: 1.05,
   })
+}
+
+/** Fruit hangs below the leaf; blossoms sit on it. Apples stay readable near a module edge. */
+export function ornamentScale(leaf: Pick<FruitHost, 'position' | 'scale'>, fruit: boolean): number {
+  if (!fruit) return Math.min(leaf.scale, 1.2) * 0.42
+  const raw = Math.min(leaf.scale, 1.7) * 1.05
+  return Math.min(1.55, Math.max(1.12, raw))
 }

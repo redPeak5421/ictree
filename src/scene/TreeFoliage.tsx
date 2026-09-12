@@ -14,7 +14,7 @@ import {
   type Season,
 } from './palettes'
 import type { SceneRef } from './sceneState'
-import { pickFruitOrnaments } from './scatter'
+import { FRUIT_HANG, ornamentScale, pickFruitOrnaments } from './scatter'
 import type { FillerInstance, LeafInstance, TreeRig } from './tree'
 import { branchTones, leafLuma } from './treeAppearance'
 import { PINE_ENABLED, type TreeSpecies } from './treeSpecies'
@@ -96,16 +96,6 @@ function poseWindGroup(
     })
     mesh.instanceMatrix.needsUpdate = true
   }
-}
-
-/** Fruit hangs below the leaf; blossoms sit on it. Size stays inside the module. */
-function ornamentScale(leaf: OrnamentHost, fruit: boolean): number {
-  const ox = leaf.position[0] - Math.round(leaf.position[0])
-  const oz = leaf.position[2] - Math.round(leaf.position[2])
-  const room = (0.5 - Math.max(Math.abs(ox), Math.abs(oz))) / 0.32
-  return fruit
-    ? Math.min(room, Math.max(0.75, Math.min(leaf.scale, 1.6) * 0.75) * 1.1)
-    : Math.min(leaf.scale, 1.2) * 0.42
 }
 
 /** Canopy and QR-critical corner vegetation. Leaves rustle in side-view wind. */
@@ -272,7 +262,7 @@ export function TreeFoliage({
     if (ornaments) {
       const fruit = ornamentKind === 'fruit'
       groups.ornaments.forEach((leaf, index) => {
-        dummy.position.set(leaf.position[0], leaf.position[1] + (fruit ? -0.14 : 0.05), leaf.position[2])
+        dummy.position.set(leaf.position[0], leaf.position[1] + (fruit ? -FRUIT_HANG : 0.05), leaf.position[2])
         dummy.rotation.set(fruit ? -0.25 : leaf.euler[0], leaf.euler[1], 0, 'YXZ')
         dummy.scale.setScalar(ornamentScale(leaf, fruit))
         dummy.updateMatrix()
@@ -312,7 +302,7 @@ export function TreeFoliage({
       groups.ornaments.forEach((leaf, index) => {
         const bend = fade === 0 ? REST_WIND : windBend(t, leaf.position[0], leaf.position[2])
         const [dx, dz] = windShift(bend.lean * gust, leaf.position[1])
-        dummy.position.set(leaf.position[0] + dx, leaf.position[1] + (fruit ? -0.14 : 0.05), leaf.position[2] + dz)
+        dummy.position.set(leaf.position[0] + dx, leaf.position[1] + (fruit ? -FRUIT_HANG : 0.05), leaf.position[2] + dz)
         dummy.rotation.set(
           (fruit ? -0.25 : leaf.euler[0]) + bend.tilt * gust,
           leaf.euler[1] + bend.twist * gust,

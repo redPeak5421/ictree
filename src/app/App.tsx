@@ -5,6 +5,7 @@ import { TreeCanvas } from '../scene/TreeCanvas'
 import type { AppMode } from '../share/params'
 import { HintPill } from '../ui/HintPill'
 import { InkStyleBar } from '../ui/InkStyleBar'
+import { GitHubLink } from '../ui/GitHubLink'
 import { LanguageSelect } from '../ui/LanguageSelect'
 import { MuteButton } from '../ui/MuteButton'
 import { ModeBar } from '../ui/ModeBar'
@@ -140,7 +141,10 @@ export function App() {
         aria-disabled={!treeInteractive}
       >
         <div className="top-row">
-          <ModeBar mode={state.mode} onChange={onModeChange} />
+          <div className="top-lead">
+            <GitHubLink />
+            <ModeBar mode={state.mode} onChange={onModeChange} />
+          </div>
           <div className="top-tools">
             <LanguageSelect />
             <MuteButton muted={state.muted} onToggle={state.toggleMuted} />

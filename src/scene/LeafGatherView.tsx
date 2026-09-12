@@ -38,7 +38,7 @@ import { LEAF_SHAPES, type LeafShape } from './leafShape'
 import { hashString } from './hash'
 import { foliageTones, mixHex, ornamentOf, type Season } from './palettes'
 import type { SceneRef } from './sceneState'
-import { pickFruitOrnaments } from './scatter'
+import { FRUIT_HANG, ornamentScale, pickFruitOrnaments } from './scatter'
 import type { FillerInstance, LeafInstance, TreeRig } from './tree'
 import { leafLuma } from './treeAppearance'
 import { PINE_ENABLED, type TreeSpecies } from './treeSpecies'
@@ -107,16 +107,10 @@ function transformOf(
 }
 
 function ornamentTransform(host: OrnamentHost, fruit: boolean): LeafGatherTransform {
-  const offsetX = host.position[0] - Math.round(host.position[0])
-  const offsetZ = host.position[2] - Math.round(host.position[2])
-  const room = (0.5 - Math.max(Math.abs(offsetX), Math.abs(offsetZ))) / 0.32
-  const size = fruit
-    ? Math.min(room, Math.max(0.75, Math.min(host.scale, 1.6) * 0.75) * 1.1)
-    : Math.min(host.scale, 1.2) * 0.42
   return transformOf(
-    [host.position[0], host.position[1] + (fruit ? -0.14 : 0.05), host.position[2]],
+    [host.position[0], host.position[1] + (fruit ? -FRUIT_HANG : 0.05), host.position[2]],
     [fruit ? -0.25 : host.euler[0], host.euler[1], 0],
-    size,
+    ornamentScale(host, fruit),
   )
 }
 

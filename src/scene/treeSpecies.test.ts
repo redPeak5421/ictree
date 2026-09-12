@@ -67,11 +67,11 @@ function metrics(points: CrownPoint[], size: number): Metrics {
 }
 
 describe('tree species selection', () => {
-  it('offers exactly the five plantable trees, in picker order', () => {
+  it('offers the plantable trees in picker order and hides pine', () => {
     expect(TREE_KINDS.map((kind) => kind.id)).toEqual(['cherry', 'apple', 'pine', 'willow', 'maple'])
-    expect(plantableKinds().map((kind) => kind.id)).toEqual(['cherry', 'apple', 'pine', 'willow', 'maple'])
-    expect(PINE_ENABLED).toBe(true)
-    expect(plantableSpecies('pine')).toBe('pine')
+    expect(plantableKinds().map((kind) => kind.id)).toEqual(['cherry', 'apple', 'willow', 'maple'])
+    expect(PINE_ENABLED).toBe(false)
+    expect(plantableSpecies('pine')).toBe('cherry')
     expect(TREE_KINDS.every((kind) => kind.label.length > 0)).toBe(true)
     expect(isTreeSpecies('maple')).toBe(true)
     expect(isTreeSpecies('banana')).toBe(false)

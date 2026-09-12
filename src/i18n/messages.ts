@@ -25,6 +25,7 @@ export interface Messages {
   unlockPassword: string
   mute: string
   unmute: string
+  githubRepo: string
   rainOn: string
   rainOff: string
   season: string
@@ -74,6 +75,7 @@ const en: Messages = {
   unlockPassword: 'Unlock password',
   mute: 'Mute',
   unmute: 'Unmute',
+  githubRepo: 'Open the GitHub repository',
   rainOn: 'Turn rain on',
   rainOff: 'Turn rain off',
   season: 'Season',
@@ -128,6 +130,7 @@ const zhCN: Messages = {
   unlockPassword: '解锁密码',
   mute: '静音',
   unmute: '取消静音',
+  githubRepo: '打开 GitHub 仓库',
   rainOn: '开启下雨',
   rainOff: '关闭下雨',
   season: '季节',
@@ -182,6 +185,7 @@ const zhTW: Messages = {
   unlockPassword: '解鎖密碼',
   mute: '靜音',
   unmute: '取消靜音',
+  githubRepo: '開啟 GitHub 儲存庫',
   rainOn: '開啟下雨',
   rainOff: '關閉下雨',
   season: '季節',
@@ -236,6 +240,7 @@ const ja: Messages = {
   unlockPassword: '解除パスワード',
   mute: 'ミュート',
   unmute: 'ミュート解除',
+  githubRepo: 'GitHubリポジトリを開く',
   rainOn: '雨を降らせる',
   rainOff: '雨を止める',
   season: '季節',
@@ -290,6 +295,7 @@ const ru: Messages = {
   unlockPassword: 'Пароль для разблокировки',
   mute: 'Выключить звук',
   unmute: 'Включить звук',
+  githubRepo: 'Открыть репозиторий на GitHub',
   rainOn: 'Включить дождь',
   rainOff: 'Выключить дождь',
   season: 'Сезон',
@@ -344,6 +350,7 @@ const fr: Messages = {
   unlockPassword: 'Mot de passe de déverrouillage',
   mute: 'Couper le son',
   unmute: 'Activer le son',
+  githubRepo: 'Ouvrir le dépôt GitHub',
   rainOn: 'Faire pleuvoir',
   rainOff: 'Arrêter la pluie',
   season: 'Saison',

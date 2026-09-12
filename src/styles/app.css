@@ -84,6 +84,13 @@ body,
   gap: 8px;
 }
 
+.top-lead {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
 .top-tools {
   display: flex;
   align-items: center;
@@ -113,7 +120,6 @@ body,
 .mode-bar {
   display: flex;
   gap: 2px;
-  margin-left: -10px;
 }
 
 .mode-tab {
@@ -235,6 +241,10 @@ body,
   transition: color var(--ease), border-color var(--ease);
 }
 
+a.icon-btn {
+  text-decoration: none;
+}
+
 .icon-btn:hover {
   color: var(--ink);
 }
@@ -341,7 +351,7 @@ body,
    in force, so the row reads as a legend of what each choice would grow. */
 .tree-row {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 

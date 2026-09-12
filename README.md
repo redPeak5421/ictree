@@ -12,7 +12,7 @@ Live: [ictree.canonforgecs.com](https://ictree.canonforgecs.com)
 
 1. Enter text or a URL.
 2. Optionally set a password. A locked tree encodes a `gv2.` AES-GCM token, not the plaintext URL.
-3. Pick a tree (Cherry, Apple, Pine, Willow, Maple), a season, and an ink style (plants, mosaic, or pixel).
+3. Pick a tree (Cherry, Apple, Willow, Maple), a season, and an ink style (plants, mosaic, or pixel).
 4. Drag to orbit. Tap to look straight down — that overhead view is the scannable code.
 
 Leaves and filler sit on **dark modules only**. The holes are the code.
