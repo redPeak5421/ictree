@@ -247,7 +247,7 @@ body,
 
 .share-menu {
   position: fixed;
-  min-width: 168px;
+  min-width: 196px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -393,6 +393,20 @@ body,
   fill: var(--leaf-accent);
   stroke: var(--panel);
   stroke-width: 1.2;
+}
+
+@media (max-width: 520px) {
+  .tree-chip {
+    height: 50px;
+    gap: 2px;
+    font-size: 11px;
+    padding: 0 1px;
+  }
+
+  .leaf-glyph {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .reveal-error {

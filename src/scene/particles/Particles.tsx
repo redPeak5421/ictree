@@ -134,7 +134,7 @@ export function Particles({
           const pulse = summerMotePulse(mote, time)
           dummy.position.set(mote.x, mote.y, mote.z)
           dummy.rotation.set(mote.spin * 0.3, mote.phase, mote.spin)
-          dummy.scale.setScalar(fluff ? 0.42 : 0.055 + pulse * 0.04)
+          dummy.scale.setScalar(fluff ? 0.5 : 0.14 + pulse * 0.1)
           dummy.updateMatrix()
           summerMesh.setMatrixAt(i, dummy.matrix)
           if (!fluff) {
