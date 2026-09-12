@@ -348,7 +348,15 @@ export function TreeCanvas({
         onOverhead={onOverhead}
       />
       <Ground grid={grid} rig={rig} scene={scene} />
-      <LockMark scene={scene} locked={locked && !revealActive} height={Math.max(1.6, rig.crownTop * 0.18)} />
+      <LockMark
+        scene={scene}
+        locked={locked && !revealActive}
+        height={Math.max(1.6, rig.crownTop * 0.18)}
+        radius={Math.max(
+          0.35,
+          ...rig.branches.filter((branch) => branch.shade === 0).map((branch) => branch.scale[0]),
+        )}
+      />
       {ink !== 'plants' ? (
         <InkDissolve
           scene={scene}

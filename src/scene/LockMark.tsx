@@ -19,10 +19,13 @@ export function LockMark({
   scene,
   locked,
   height,
+  radius,
 }: {
   scene: SceneRef
   locked: boolean
   height: number
+  /** Trunk radius so the charm sits on the bark, not inside it. */
+  radius: number
 }) {
   const root = useRef<Group>(null)
   const vineMats = useRef<MeshBasicMaterial[]>([])
@@ -43,7 +46,7 @@ export function LockMark({
   useLayoutEffect(() => {
     vineMats.current = []
     lockMats.current = []
-  }, [height, locked])
+  }, [height, locked, radius])
 
   useFrame(() => {
     const group = root.current
@@ -66,6 +69,7 @@ export function LockMark({
       mat.color.copy(lockTint)
       mat.opacity = opacity
       mat.transparent = true
+      mat.depthTest = false
       mat.depthWrite = false
     }
   })
@@ -83,6 +87,7 @@ export function LockMark({
 
   // Sit on the pale bole, below hanging canopy, so a side view can see it.
   const lockY = Math.min(0.78, Math.max(0.58, height * 0.22))
+  const lockZ = Math.max(0.55, radius + 0.42)
 
   return (
     <group ref={root}>
@@ -100,14 +105,14 @@ export function LockMark({
           />
         </mesh>
       ))}
-      <group position={[0, lockY, 0.62]} scale={1.55}>
+      <group position={[0, lockY, lockZ]} scale={2.5}>
         <mesh position={[0, 0.02, 0]}>
           <boxGeometry args={[0.38, 0.3, 0.14]} />
-          <meshBasicMaterial ref={bindLock} color={LOCK_HEX} transparent depthWrite={false} />
+          <meshBasicMaterial ref={bindLock} color={LOCK_HEX} transparent depthTest={false} depthWrite={false} />
         </mesh>
-        <mesh position={[0, 0.22, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.12, 0.035, 8, 18, Math.PI]} />
-          <meshBasicMaterial ref={bindLock} color={LOCK_HEX} transparent depthWrite={false} />
+        <mesh position={[0, 0.28, 0.02]} rotation={[0, 0, Math.PI]}>
+          <torusGeometry args={[0.13, 0.04, 10, 22, Math.PI]} />
+          <meshBasicMaterial ref={bindLock} color={LOCK_HEX} transparent depthTest={false} depthWrite={false} />
         </mesh>
       </group>
     </group>
