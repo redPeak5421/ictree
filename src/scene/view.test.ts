@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockInkOpacity, cameraPose, inkMixTarget, isOverhead, OVERHEAD, plantInkOpacity, sceneryOpacity, squareYaw, stepAngleGlide, stepInkMix, TILE_GAPPED, TILE_LOOSE, TILE_SOLID, tileEdge, VIEW_MS } from './view'
+import { blockInkOpacity, cameraPose, GROW_MS, GROW_SNAP_PITCH, growScaleY, inkMixTarget, isOverhead, OVERHEAD, plantInkOpacity, sceneryOpacity, squareYaw, stepAngleGlide, stepGrow, stepInkMix, TILE_GAPPED, TILE_LOOSE, TILE_SOLID, tileEdge, VIEW_MS } from './view'
 import { VIEW_PITCH, VIEW_YAW } from './tree'
 
 const dot = (a: number[], b: number[]) => a[0]! * b[0]! + a[1]! * b[1]! + a[2]! * b[2]!
@@ -157,6 +157,19 @@ describe('view helpers', () => {
     expect(mid).toBeCloseTo(0.5, 5)
     expect(late).toBeGreaterThan(0.9)
     expect(1 - late).toBeLessThan(0.1)
+  })
+
+  it('grows the crown from a stump and snaps when asked', () => {
+    expect(growScaleY(0)).toBeCloseTo(0.16, 5)
+    expect(growScaleY(1)).toBe(1)
+    expect(growScaleY(0.5)).toBeGreaterThan(growScaleY(0.25))
+    expect(growScaleY(0.5)).toBeLessThan(growScaleY(0.75))
+    let grow = 0
+    for (let i = 0; i < 90; i++) grow = stepGrow(grow, 1, 1 / 60)
+    expect(grow).toBe(1)
+    expect(stepGrow(0.2, 1, 1 / 60, true)).toBe(1)
+    expect(GROW_MS).toBeGreaterThanOrEqual(900)
+    expect(GROW_SNAP_PITCH).toBe(1.2)
   })
 
   it('squares the heading to the nearest quarter turn', () => {

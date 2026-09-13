@@ -74,10 +74,15 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(href)
 }
 
+export function formatLoopProgress(label: string, current: number, total: number): string {
+  return `${label} ${current}/${total}`
+}
+
 export async function downloadLoopGif(
   state: ShareState,
   scene: SceneRef,
   signal?: AbortSignal,
+  onProgress?: (current: number, total: number) => void,
 ): Promise<void> {
   throwIfAborted(signal)
   const search = buildShareSearch(state)
@@ -117,6 +122,8 @@ export async function downloadLoopGif(
     cam.yawTarget = null
     cam.spinYaw = 0
     cam.spinPitch = 0
+    cam.grow = 1
+    cam.growTarget = 1
     const baseYaw = cam.yaw
     const w = src.width
     const h = src.height
@@ -140,6 +147,7 @@ export async function downloadLoopGif(
       const image = ctx.getImageData(0, 0, width, height)
       blitSiteQr(image, patch)
       frames.push({ data: new Uint8ClampedArray(image.data), width, height })
+      onProgress?.(i + 1, LOOP_FRAMES)
     }
   } finally {
     signal?.removeEventListener('abort', onAbort)

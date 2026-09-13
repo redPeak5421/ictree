@@ -25,6 +25,7 @@ export interface Messages {
   unlockPassword: string
   mute: string
   unmute: string
+  githubRepo: string
   rainOn: string
   rainOff: string
   season: string
@@ -43,6 +44,8 @@ export interface Messages {
   downloadQr: string
   saveStill: string
   saveLoop: string
+  savingStill: string
+  savingLoop: string
   openStill: string
   shareOnX: string
   facebook: string
@@ -72,6 +75,7 @@ const en: Messages = {
   unlockPassword: 'Unlock password',
   mute: 'Mute',
   unmute: 'Unmute',
+  githubRepo: 'Open the GitHub repository',
   rainOn: 'Turn rain on',
   rainOff: 'Turn rain off',
   season: 'Season',
@@ -90,6 +94,8 @@ const en: Messages = {
   downloadQr: 'Download QR',
   saveStill: 'Save still',
   saveLoop: 'Save loop',
+  savingStill: 'Saving still…',
+  savingLoop: 'Orbiting the tree…',
   openStill: 'Open image',
   shareOnX: 'Share on X',
   facebook: 'Facebook',
@@ -124,6 +130,7 @@ const zhCN: Messages = {
   unlockPassword: '解锁密码',
   mute: '静音',
   unmute: '取消静音',
+  githubRepo: '打开 GitHub 仓库',
   rainOn: '开启下雨',
   rainOff: '关闭下雨',
   season: '季节',
@@ -142,6 +149,8 @@ const zhCN: Messages = {
   downloadQr: '下载二维码',
   saveStill: '保存静态图',
   saveLoop: '保存动图',
+  savingStill: '正在保存静态图…',
+  savingLoop: '正在绕树拍照…',
   openStill: '打开图片',
   shareOnX: '分享到 X',
   facebook: 'Facebook',
@@ -176,6 +185,7 @@ const zhTW: Messages = {
   unlockPassword: '解鎖密碼',
   mute: '靜音',
   unmute: '取消靜音',
+  githubRepo: '開啟 GitHub 儲存庫',
   rainOn: '開啟下雨',
   rainOff: '關閉下雨',
   season: '季節',
@@ -194,6 +204,8 @@ const zhTW: Messages = {
   downloadQr: '下載 QR Code',
   saveStill: '儲存靜態圖',
   saveLoop: '儲存動圖',
+  savingStill: '正在儲存靜態圖…',
+  savingLoop: '正在繞樹拍照…',
   openStill: '開啟圖片',
   shareOnX: '分享到 X',
   facebook: 'Facebook',
@@ -228,6 +240,7 @@ const ja: Messages = {
   unlockPassword: '解除パスワード',
   mute: 'ミュート',
   unmute: 'ミュート解除',
+  githubRepo: 'GitHubリポジトリを開く',
   rainOn: '雨を降らせる',
   rainOff: '雨を止める',
   season: '季節',
@@ -246,6 +259,8 @@ const ja: Messages = {
   downloadQr: 'QRをダウンロード',
   saveStill: '静止画を保存',
   saveLoop: 'ループ動画を保存',
+  savingStill: '静止画を保存中…',
+  savingLoop: '木のまわりを撮影中…',
   openStill: '画像を開く',
   shareOnX: 'Xで共有',
   facebook: 'Facebook',
@@ -280,6 +295,7 @@ const ru: Messages = {
   unlockPassword: 'Пароль для разблокировки',
   mute: 'Выключить звук',
   unmute: 'Включить звук',
+  githubRepo: 'Открыть репозиторий на GitHub',
   rainOn: 'Включить дождь',
   rainOff: 'Выключить дождь',
   season: 'Сезон',
@@ -298,6 +314,8 @@ const ru: Messages = {
   downloadQr: 'Скачать QR-код',
   saveStill: 'Сохранить кадр',
   saveLoop: 'Сохранить анимацию',
+  savingStill: 'Сохраняем кадр…',
+  savingLoop: 'Обходим дерево…',
   openStill: 'Открыть изображение',
   shareOnX: 'Поделиться в X',
   facebook: 'Facebook',
@@ -332,6 +350,7 @@ const fr: Messages = {
   unlockPassword: 'Mot de passe de déverrouillage',
   mute: 'Couper le son',
   unmute: 'Activer le son',
+  githubRepo: 'Ouvrir le dépôt GitHub',
   rainOn: 'Faire pleuvoir',
   rainOff: 'Arrêter la pluie',
   season: 'Saison',
@@ -350,6 +369,8 @@ const fr: Messages = {
   downloadQr: 'Télécharger le QR',
   saveStill: 'Enregistrer l\u2019image',
   saveLoop: 'Enregistrer la boucle',
+  savingStill: 'Enregistrement…',
+  savingLoop: 'Tour de l\u2019arbre…',
   openStill: 'Ouvrir une image',
   shareOnX: 'Partager sur X',
   facebook: 'Facebook',

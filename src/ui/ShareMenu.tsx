@@ -5,7 +5,7 @@ import { translateMessage } from '../i18n/messages'
 import type { ModuleGrid } from '../qr/types'
 import type { SceneColors } from '../scene/palettes'
 import type { SceneRef } from '../scene/sceneState'
-import { downloadLoopGif, preserveCurrentCameraAbortReason } from '../share/exportLoop'
+import { downloadLoopGif, formatLoopProgress, LOOP_FRAMES, preserveCurrentCameraAbortReason } from '../share/exportLoop'
 import { downloadQrPng } from '../share/exportPng'
 import { downloadStillPng, STILL_NO_CANVAS } from '../share/exportStill'
 import { readStillFile, STILL_ERROR } from '../share/importStill'
@@ -44,6 +44,8 @@ export function ShareMenu({
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [stillNote, setStillNote] = useState<string | null>(null)
+  const [savingStill, setSavingStill] = useState(false)
+  const [loopProgress, setLoopProgress] = useState<{ current: number; total: number } | null>(null)
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
@@ -85,6 +87,8 @@ export function ShareMenu({
     setOpen(false)
     setCopied(false)
     setStillNote(null)
+    setSavingStill(false)
+    setLoopProgress(null)
   }, [disabled])
 
   useEffect(() => {
@@ -130,7 +134,7 @@ export function ShareMenu({
     place()
     window.addEventListener('resize', place)
     return () => window.removeEventListener('resize', place)
-  }, [disabled, open, stillNote])
+  }, [disabled, open, stillNote, loopProgress, savingStill])
 
   const link = shareUrl(window.location.origin, window.location.pathname, state)
 
@@ -149,6 +153,8 @@ export function ShareMenu({
       window.clearTimeout(copiedTimer.current)
       copiedTimer.current = null
     }
+    setSavingStill(false)
+    setLoopProgress(null)
     return actionEpoch.current
   }
 
@@ -193,10 +199,18 @@ export function ShareMenu({
   const saveStill = async () => {
     if (disabledRef.current) return
     const epoch = beginAction()
+    scene.current.grow = 1
+    scene.current.growTarget = 1
+    setLoopProgress(null)
+    setSavingStill(true)
     try {
       await downloadStillPng(state)
-      if (isCurrent(epoch)) setOpen(false)
+      if (isCurrent(epoch)) {
+        setSavingStill(false)
+        setOpen(false)
+      }
     } catch (err) {
+      if (isCurrent(epoch)) setSavingStill(false)
       failStill(err, epoch)
     }
   }
@@ -205,10 +219,18 @@ export function ShareMenu({
     if (disabledRef.current) return
     const controller = new AbortController()
     const epoch = beginAction(controller)
+    setSavingStill(false)
+    setLoopProgress({ current: 0, total: LOOP_FRAMES })
     try {
-      await downloadLoopGif(state, scene, controller.signal)
-      if (isCurrent(epoch)) setOpen(false)
+      await downloadLoopGif(state, scene, controller.signal, (current, total) => {
+        if (isCurrent(epoch)) setLoopProgress({ current, total })
+      })
+      if (isCurrent(epoch)) {
+        setLoopProgress(null)
+        setOpen(false)
+      }
     } catch (err) {
+      if (isCurrent(epoch)) setLoopProgress(null)
       failStill(err, epoch)
     } finally {
       if (loopController.current === controller) loopController.current = null
@@ -252,9 +274,9 @@ export function ShareMenu({
         <button
           type="button"
           role="menuitem"
-          disabled={disabled}
+          disabled={disabled || savingStill || loopProgress !== null}
           onClick={() => {
-            if (disabledRef.current) return
+            if (disabledRef.current || savingStill || loopProgress) return
             downloadQrPng(grid, colors)
             setOpen(false)
           }}
@@ -264,18 +286,18 @@ export function ShareMenu({
         <button
           type="button"
           role="menuitem"
-          disabled={disabled}
+          disabled={disabled || savingStill || loopProgress !== null}
           onClick={() => void saveStill()}
         >
-          {t.saveStill}
+          {savingStill ? t.savingStill : t.saveStill}
         </button>
         <button
           type="button"
           role="menuitem"
-          disabled={disabled}
+          disabled={disabled || savingStill || loopProgress !== null}
           onClick={() => void saveLoop()}
         >
-          {t.saveLoop}
+          {loopProgress ? formatLoopProgress(t.savingLoop, loopProgress.current, loopProgress.total) : t.saveLoop}
         </button>
       </div>
       <div className="share-group" role="group" aria-label={t.importGroup}>

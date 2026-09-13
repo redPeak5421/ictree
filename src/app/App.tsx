@@ -3,10 +3,12 @@ import { translateMessage } from '../i18n/messages'
 import { useT } from '../i18n/useLocale'
 import { TreeCanvas } from '../scene/TreeCanvas'
 import type { AppMode } from '../share/params'
+import { GitHubLink } from '../ui/GitHubLink'
 import { HintPill } from '../ui/HintPill'
 import { InkStyleBar } from '../ui/InkStyleBar'
 import { LanguageSelect } from '../ui/LanguageSelect'
 import { ModeBar } from '../ui/ModeBar'
+import { MuteButton } from '../ui/MuteButton'
 import { PasswordField } from '../ui/PasswordField'
 import { QrFallback } from '../ui/QrFallback'
 import { RevealPanel } from '../ui/RevealPanel'
@@ -112,6 +114,7 @@ export function App() {
             reduced={state.reduced}
             rain={state.rain}
             ink={state.ink}
+            locked={state.locked}
             reveal={reveal}
             onRevealTextReveal={onRevealTextReveal}
             onRevealSettled={onRevealSettled}
@@ -138,9 +141,13 @@ export function App() {
         aria-disabled={!treeInteractive}
       >
         <div className="top-row">
-          <ModeBar mode={state.mode} onChange={onModeChange} />
+          <div className="top-lead">
+            <GitHubLink />
+            <ModeBar mode={state.mode} onChange={onModeChange} />
+          </div>
           <div className="top-tools">
             <LanguageSelect />
+            <MuteButton muted={state.muted} onToggle={state.toggleMuted} />
             <WeatherButton rain={state.rain} onToggle={state.toggleRain} />
           </div>
         </div>

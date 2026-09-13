@@ -33,6 +33,10 @@ export interface SceneState {
   zoomTarget: number | null
   /** 0 = plants, 1 = colour-block mosaic. Eased independently of pitch. */
   inkMix: number
+  /** 0 = stump, 1 = full tree. Side-view plant-in; snaps to 1 near overhead. */
+  grow: number
+  /** Where `grow` is heading. */
+  growTarget: number
 }
 
 export type SceneRef = { current: SceneState }

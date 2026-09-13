@@ -428,10 +428,12 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
   }
 
   // ---- extra crown mass: stacked on dark modules so the QR bits stay put ----
+  // Overhead coverage is the 13-slot canopy pack above. Filler is only
+  // side-view volume — keep it airy enough to read as leaves, not a hedge.
   const filler: FillerInstance[] = []
   const lush = habit === 'lush'
-  const fillerLo = lush ? (dense ? 0.68 : 1.0) : dense ? 0.55 : 0.85
-  const fillerHi = lush ? (dense ? 1.22 : 1.75) : dense ? 1.05 : 1.55
+  const fillerLo = lush ? (dense ? 0.6 : 0.88) : dense ? 0.55 : 0.85
+  const fillerHi = lush ? (dense ? 1.05 : 1.42) : dense ? 1.05 : 1.55
   const pushFiller = (cell: ModuleCell, x: number, y: number, z: number, sizeFactor: number) => {
     const cx = cell.x - half
     const cz = cell.y - half
@@ -469,9 +471,9 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     })
   }
   if (lush) {
-    const stacks = dense ? 4 : 6
-    const around = dense ? 3 : 5
-    const extraSlots = dense ? 8 : 13
+    const stacks = 3
+    const around = dense ? 2 : 3
+    const extraSlots = dense ? 5 : 6
     for (const { point } of owners) {
       const cx = point.cell.x - half
       const cz = point.cell.y - half
@@ -498,7 +500,7 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
           0.92,
         )
       })
-      qrSlots(dense ? 5 : 9, rng).forEach((slot) => {
+      qrSlots(dense ? 3 : 4, rng).forEach((slot) => {
         pushFiller(
           point.cell,
           cx + slot.ox,
@@ -511,7 +513,7 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
     for (let i = 1; i < nodes.length; i++) {
       const node = nodes[i]!
       if (node.depth <= trunkSteps + 1 || node.y < trunkH * 0.9) continue
-      if (dense && i % 2 !== 0) continue
+      if (i % 2 !== 0) continue
       let nearest = owners[0]!
       let best = Infinity
       for (const owner of owners) {
@@ -524,7 +526,7 @@ export function buildTree(grid: ModuleGrid, seed: number, options: BuildTreeOpti
         }
       }
       pushFiller(nearest.point.cell, node.x, node.y, node.z, 0.88)
-      if (!dense || i % 4 === 0) {
+      if (i % 6 === 0) {
         pushFiller(
           nearest.point.cell,
           node.x + (rng() - 0.5) * 0.35,

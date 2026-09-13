@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SceneRef } from '../scene/sceneState'
 import {
   downloadLoopGif,
+  formatLoopProgress,
   LOOP_DELAY_MS,
   LOOP_FRAMES,
   preserveCurrentCameraAbortReason,
@@ -25,6 +26,7 @@ describe('exported loop timing', () => {
   it('holds each frame long enough to read as a slow orbit', () => {
     expect(LOOP_DELAY_MS).toBeGreaterThanOrEqual(160)
     expect(LOOP_FRAMES).toBeGreaterThanOrEqual(16)
+    expect(formatLoopProgress('Orbiting the tree…', 3, 20)).toBe('Orbiting the tree… 3/20')
   })
 
   it('restores synchronously before a replacement capture starts', async () => {
@@ -56,6 +58,8 @@ describe('exported loop timing', () => {
         zoom: 1,
         zoomTarget: null,
         inkMix: 0,
+        grow: 1,
+        growTarget: 1,
       },
     }
     const startingCamera = { ...scene.current }
@@ -113,6 +117,8 @@ describe('exported loop timing', () => {
         zoom: 1,
         zoomTarget: 1.15,
         inkMix: 0,
+        grow: 1,
+        growTarget: 1,
       },
     }
 

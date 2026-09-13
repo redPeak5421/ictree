@@ -10,7 +10,7 @@ export interface TreeKind {
   label: string
 }
 
-/** The five trees a person can plant, in picker order. */
+/** Known trees in picker order. Pine stays in the list for old `t=pine` links. */
 export const TREE_KINDS: readonly TreeKind[] = [
   { id: 'cherry', label: 'Cherry' },
   { id: 'apple', label: 'Apple' },
